@@ -19,6 +19,13 @@ approval, tracing and a live control room.
    the next provider, the circuit breaker opens, and jobs that run out of attempts land in the
    dead letter queue with a **Retry** button.
 
+## The dashboard
+
+`Overview` (KPIs, throughput, what needs a decision), `Runs` (every run with its steps),
+`Approvals`, `Queue` (dead letters with retry), `Agents` (the registry and risk tiers), `Audit log`,
+and `/info`: how the whole system works, with an architecture diagram. Light and dark themes.
+Everything updates live through Supabase Realtime.
+
 ## How the agents are controlled
 
 | Layer | What it guarantees |
