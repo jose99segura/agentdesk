@@ -22,8 +22,17 @@ export type EvalCase = {
   expect: Record<string, unknown>;
 };
 
+export type ExplainerMeta = {
+  system_prompt: string;
+  example_user_message: string;
+  output_tool: null;
+  tools: Spec[];
+  max_history: number;
+};
+
 export type Meta = {
-  agents: { triage: AgentMeta; resolver: AgentMeta };
+  agents: { triage: AgentMeta; resolver: AgentMeta; explainer?: ExplainerMeta };
+  links?: { n8n_folder: string; n8n_workflows: { name: string; url: string }[]; langfuse: string };
   models: {
     chain: string[];
     configured_chain: string[];

@@ -9,6 +9,7 @@ from dataclasses import fields
 
 import yaml
 
+from . import explain
 from .agents.runner import (
     MAX_ROUNDS,
     RESOLVER_SYSTEM,
@@ -63,6 +64,19 @@ def describe() -> dict:
                 "tools": [_spec(t.spec) for t in TOOLS.values()],
                 "max_rounds": MAX_ROUNDS,
             },
+            "explainer": {
+                "system_prompt": explain.system_prompt(None),
+                "example_user_message": "What happens when a model provider is down?",
+                "output_tool": None,
+                "tools": [],
+                "max_history": explain.MAX_HISTORY,
+            },
+        },
+        "links": {
+            "n8n_folder": explain.N8N_FOLDER,
+            "n8n_workflows": [{"name": n, "url": f"{explain.N8N}/workflow/{i}"}
+                              for n, i in explain.N8N_WORKFLOWS],
+            "langfuse": explain.LANGFUSE,
         },
         "models": {
             "chain": [p.name for p in build_providers(cfg)],

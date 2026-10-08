@@ -15,6 +15,8 @@ import uuid
 from .types import Completion, Message, ToolCall
 
 ORDER_RE = re.compile(r"\bORD-\d{4,6}\b", re.IGNORECASE)
+# Kept in step with explain.MARKER (imported lazily there to avoid a cycle).
+EXPLAINER_MARKER = "You are the guide of agentdesk."
 
 INTENT_WORDS = {
     "damaged_item": ["broken", "damaged", "cracked", "roto", "rota", "dañado", "cassé", "abîmé"],
@@ -104,13 +106,19 @@ class OfflineProvider:
         started = time.monotonic()
         # A little latency so the live dashboard behaves like it would with a real model.
         time.sleep(self._rng.uniform(0.15, 0.6))
+        text = ""
         if force_tool == "submit_triage":
             call = self._triage(messages)
+        elif not tools and messages and messages[0].content.startswith(EXPLAINER_MARKER):
+            # The explainer asks in prose with no tools: quote the guide instead of a model.
+            from ..explain import offline_answer
+
+            call, text = [], offline_answer(messages[-1].content)
         else:
             call = self._resolve(messages)
         prompt_chars = sum(len(m.content) for m in messages)
         return Completion(
-            text="",
+            text=text,
             tool_calls=call,
             provider=self.name,
             model=self.model,

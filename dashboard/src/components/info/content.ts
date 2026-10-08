@@ -47,6 +47,48 @@ export const CODE = [
   [".github/workflows/ci.yml", "Lint, tests and the evaluation gate on every push"],
 ];
 
+// Where the live pieces are. n8n workflow ids are the ones in the self-hosted instance
+// (folder "agentdesk"); the core's /meta reports the same list, so they stay in one place.
+export const N8N_URL = "https://n8n.senaproject.online";
+export const N8N_FOLDER_URL = `${N8N_URL}/projects/7d6T3aexJ0y2nZTb/folders/OET1fRISh0fNtg0T/workflows`;
+export const N8N_WORKFLOW_IDS: Record<string, string> = {
+  "00": "d0wroeRD2aWu0Igr",
+  "01": "52qKtgnCUR00CsMO",
+  "02": "a6GFO0sMvdIytJ13",
+  "03": "sSTS3uOfS3hI6LmK",
+  "04": "IpX9bPIvZbWsTzPP",
+  "99": "jjaASFOXhI6BKjXr",
+};
+export const LANGFUSE_URL = "https://langfuse.senaproject.online/project/cmuzbb1t2000gp708h15hk9ns";
+
+export const LINKS: [string, string, string, "public" | "local"][] = [
+  ["n8n · agentdesk folder", N8N_FOLDER_URL, "The six workflows: entry points, traffic, the daily report, the error handler.", "public"],
+  ["Langfuse · traces", `${LANGFUSE_URL}/traces`, "Every model and tool call, one trace per ticket. Environment agentdesk-dev.", "public"],
+  ["Langfuse · datasets", `${LANGFUSE_URL}/datasets`, "The golden suite as a dataset, one run per evaluation, with scores.", "public"],
+  ["Core API · /meta", "http://127.0.0.1:8000/meta", "Prompts, tool schemas and settings, straight from the running code.", "local"],
+  ["Core API · /docs", "http://127.0.0.1:8000/docs", "The HTTP API (tickets, decisions, retries, chaos, explain), as OpenAPI.", "local"],
+  ["Supabase Studio", "http://127.0.0.1:54323", "The database: tables, the three roles, grants and row level security.", "local"],
+];
+
+export const READING_MAP: [string, string, string, string][] = [
+  ["/info", "Overview", "What it is, where to click, the architecture and the life of a ticket.", "5 min"],
+  ["/info/agents", "Agents", "The two agents: their prompts, their tools and the forms they fill in, live from the code.", "6 min"],
+  ["/info/paths", "Paths & examples", "Every way a ticket can end, six real worked examples, and what the person in the loop sees.", "8 min"],
+  ["/info/safety", "Safety", "The layers that keep an agent from acting alone, and the attacks they stop.", "6 min"],
+  ["/info/quality", "Quality", "The golden suite, the judge and the gate that runs on every change.", "5 min"],
+  ["/info/operations", "Operations", "n8n at the edges, Langfuse underneath, and what happens when things go wrong.", "7 min"],
+  ["/info/reference", "Reference", "Glossary, stack and code map, and the live links.", "3 min"],
+];
+
+export const SUGGESTED_QUESTIONS = [
+  "What happens when a model provider is down?",
+  "Why can't an agent refund money on its own?",
+  "How does a refund get approved?",
+  "¿Qué hace cada workflow de n8n?",
+  "How do the evaluations gate a change?",
+  "Explain this project for an interview in 30 seconds.",
+];
+
 export const STACK = [
   ["Core", "Python 3.12, FastAPI, psycopg 3, Pydantic"],
   ["Models", "Mistral and Anthropic over plain HTTP; offline stand-in for keyless runs"],

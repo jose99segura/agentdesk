@@ -39,6 +39,10 @@ ControlC code, data or credentials, ever.
   out of every live view. A prompt or agent change must keep `agentdesk eval --gate` open.
 - **/info is served from the code**: `GET /meta` returns prompts, tool schemas, settings and the suite.
   Change behaviour in the core and /info follows; only prose lives in the dashboard.
+- **The explainer** (`explain.py`, "Ask the guide" on /info) is a registered agent like the others:
+  router, recorder, trace. Its `GUIDE` is hand-written prose; when behaviour changes, update it, or
+  the agent will explain the old behaviour. n8n workflow ids and the Langfuse project live there
+  and in `dashboard/src/components/info/content.ts`.
 - **n8n workflows are generated**: edit `n8n/build.py`, run it, re-import. Never hand-edit the JSON.
 - Code, comments, UI and docs in English (international portfolio).
 

@@ -3,6 +3,8 @@ import ArchitectureDiagram from "@/components/ArchitectureDiagram";
 import { TicketSequence } from "@/components/diagrams/flows";
 import { Figure } from "@/components/diagrams/kit";
 import InfoPage from "@/components/info/InfoPage";
+import Links from "@/components/info/Links";
+import ReadingMap from "@/components/info/ReadingMap";
 import { LIFECYCLE, TOUR } from "@/components/info/content";
 import { Card3, Code, Section } from "@/components/info/parts";
 import Link from "next/link";
@@ -11,9 +13,11 @@ export const metadata: Metadata = { title: "Overview" };
 
 const TOC = [
   { id: "overview", label: "What it is" },
+  { id: "start", label: "Start here" },
   { id: "tour", label: "A two-minute tour" },
   { id: "architecture", label: "Architecture" },
   { id: "ticket", label: "The life of a ticket" },
+  { id: "links", label: "Where things live" },
 ];
 
 export default function Page() {
@@ -45,7 +49,22 @@ export default function Page() {
           rules, the approvals from a phone, the tracing and the evaluation that guards every change.
         </p>
       </Section>
-      <Section id="tour" number="02" title="A two-minute tour" lead="Where to click, in order, to see the whole system work.">
+      <Section
+        id="start"
+        number="02"
+        title="Start here"
+        lead="The guide has seven tabs, written to be read in order. Each one starts in plain words, then goes into the detail."
+        plain={
+          <>
+            In a hurry? Read this tab and <Link href="/info/paths" className="font-medium underline decoration-dotted">Paths &amp; examples</Link>.
+            Have a question instead? Press <span className="font-medium">Ask the guide</span> at the bottom right: an agent of this
+            platform answers from this guide and from the running code, in your language.
+          </>
+        }
+      >
+        <ReadingMap />
+      </Section>
+      <Section id="tour" number="03" title="A two-minute tour" lead="Where to click, in order, to see the whole system work.">
         <ol className="grid gap-2 sm:grid-cols-2">
           {TOUR.map(([name, href, what], i) => (
             <li key={name}>
@@ -62,7 +81,7 @@ export default function Page() {
       </Section>
       <Section
         id="architecture"
-        number="03"
+        number="04"
         title="Architecture"
         lead="One request path from left to right, one decision path along the bottom, and observability under all of it."
         plain={
@@ -79,7 +98,7 @@ export default function Page() {
       </Section>
       <Section
         id="ticket"
-        number="04"
+        number="05"
         title="The life of a ticket"
         lead="What happens between “my order arrived broken” and a refund, and where each step lives in the code."
       >
@@ -100,6 +119,14 @@ export default function Page() {
             </li>
           ))}
         </ol>
+      </Section>
+      <Section
+        id="links"
+        number="06"
+        title="Where things live"
+        lead="The pieces outside this dashboard, one click away. “Live” links are the real self-hosted services; “local” ones only answer when the stack runs on your machine."
+      >
+        <Links />
       </Section>
     </InfoPage>
   );

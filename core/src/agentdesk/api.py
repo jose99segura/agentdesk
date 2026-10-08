@@ -2,6 +2,7 @@
 
 import hashlib
 import hmac
+from functools import lru_cache
 from typing import Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException
@@ -11,7 +12,7 @@ from pydantic import BaseModel, EmailStr, Field
 from . import jobs
 from .approvals import DecisionError, decide
 from .config import settings
-from .db import api_pool
+from .db import agent_pool, api_pool
 
 app = FastAPI(title="agentdesk", version="0.1.0")
 
@@ -130,6 +131,43 @@ def simulate(s: SimulateIn) -> dict:
     rng = random.Random()
     created = [create_ticket(TicketIn(**make_ticket(rng))) for _ in range(s.count)]
     return {"created": len(created), "tickets": [c["ticket_id"] for c in created]}
+
+
+class Turn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=4000)
+
+
+class ExplainIn(BaseModel):
+    question: str = Field(min_length=1, max_length=2000)
+    history: list[Turn] = Field(default_factory=list, max_length=12)
+
+
+@lru_cache
+def explainer_router():
+    """The same router the worker uses: retries, fallback, breakers, fault injection."""
+    from .llm import build_router
+    from .worker import ChaosFlags, publish_health
+
+    return build_router(settings(), ChaosFlags(), publish_health)
+
+
+@app.post("/explain", dependencies=[Depends(require_token)])
+def explain(q: ExplainIn) -> dict:
+    """Ask the guide: the registered explainer agent, recorded as a run like any other."""
+    from .agents.runner import AgentNotRegistered
+    from .explain import answer
+    from .llm.types import AllProvidersFailed
+    from .meta import describe
+
+    with agent_pool().connection() as conn:
+        try:
+            return answer(conn, explainer_router(), q.question,
+                          [t.model_dump() for t in q.history], describe())
+        except AgentNotRegistered as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except AllProvidersFailed as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @app.get("/stats", dependencies=[Depends(require_token)])

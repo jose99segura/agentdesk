@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Glossary from "@/components/info/Glossary";
 import InfoPage from "@/components/info/InfoPage";
+import Links from "@/components/info/Links";
 import { CODE, STACK } from "@/components/info/content";
 import { Section, Sub } from "@/components/info/parts";
 
@@ -9,6 +10,7 @@ export const metadata: Metadata = { title: "Reference" };
 const TOC = [
   { id: "glossary", label: "Glossary" },
   { id: "code", label: "Stack and code map" },
+  { id: "links", label: "Where things live" },
 ];
 
 export default function Page() {
@@ -36,6 +38,9 @@ export default function Page() {
             ))}
           </ul>
         </Sub>
+      </Section>
+      <Section id="links" number="03" title="Where things live" lead="The n8n folder, the Langfuse project and the local services, one click away.">
+        <Links />
       </Section>
     </InfoPage>
   );

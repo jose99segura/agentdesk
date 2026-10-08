@@ -22,9 +22,18 @@ approval, tracing and a live control room.
 ## The dashboard
 
 `Overview` (KPIs, throughput, what needs a decision), `Runs` (every run with its steps),
-`Approvals`, `Queue` (dead letters with retry), `Agents` (the registry and risk tiers), `Audit log`,
-and `/info`: how the whole system works, with an architecture diagram. Light and dark themes.
-Everything updates live through Supabase Realtime.
+`Approvals`, `Queue` (dead letters with retry), `Agents` (the registry and risk tiers), `Evals`,
+`Audit log`, and `/info`: a seven-tab guide to how the whole system works, with diagrams, worked
+examples and links to the n8n workflows and Langfuse. Light and dark themes. Everything updates
+live through Supabase Realtime.
+
+**Ask the guide.** `/info` has a chat with the *explainer*, a third registered agent (tier 0, no
+tools) that answers questions about the platform in any language, from a hand-written guide
+(`core/src/agentdesk/explain.py`) and from what the running code reports about itself (`GET /meta`).
+It goes through the same model router and run recorder as the other agents, so every question is a
+run on `Runs` with its cost and a Langfuse trace. Without a model key it quotes the most relevant
+section of the guide. The dashboard calls `POST /explain`; it is on only where
+`DASHBOARD_ACTIONS_ENABLED=true`.
 
 ## How the agents are controlled
 
