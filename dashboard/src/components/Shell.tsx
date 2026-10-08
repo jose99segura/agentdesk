@@ -15,6 +15,7 @@ const NAV = [
   { href: "/approvals", label: "Approvals", count: "pending_approvals" as const },
   { href: "/queue", label: "Queue", count: "dead_letters" as const },
   { href: "/agents", label: "Agents" },
+  { href: "/evals", label: "Evals" },
   { href: "/audit", label: "Audit log" },
 ];
 

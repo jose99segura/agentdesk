@@ -17,6 +17,7 @@ export default function RunsPage() {
       let q = supabase
         .from("runs")
         .select("*, tickets(subject, channel, intent, body)")
+        .is("eval_run_id", null)
         .order("started_at", { ascending: false })
         .limit(60);
       if (filter !== "all") q = q.eq("status", filter);

@@ -20,6 +20,7 @@ export default function Overview() {
       supabase
         .from("runs")
         .select("*, tickets(subject, channel, intent, body)")
+        .is("eval_run_id", null)
         .order("started_at", { ascending: false })
         .limit(8)
         .then((r) => (r.data as Run[]) ?? []),
