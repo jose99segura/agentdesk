@@ -1,36 +1,7 @@
 // Prompts, tools and model settings, fetched from the running core (GET /meta), so this
 // page always shows what the agents actually receive rather than a copy that can drift.
 
-type Spec = { name: string; description: string; parameters: unknown };
-type AgentMeta = {
-  system_prompt: string;
-  example_user_message: string;
-  output_tool: Spec;
-  tools: Spec[];
-  max_rounds?: number;
-};
-type Meta = {
-  agents: { triage: AgentMeta; resolver: AgentMeta };
-  models: {
-    chain: string[];
-    configured_chain: string[];
-    mistral_model: string;
-    anthropic_model: string;
-    prices_usd_per_million_tokens: Record<string, [number, number]>;
-    attempts_per_provider: number;
-    breaker: { failure_threshold: number; cooldown_s: number };
-  };
-  queue: { max_attempts: number; backoff_seconds: number[]; lease_seconds: number };
-};
-
-async function loadMeta(): Promise<Meta | null> {
-  try {
-    const res = await fetch(`${process.env.CORE_API_URL ?? "http://127.0.0.1:8000"}/meta`, { cache: "no-store" });
-    return res.ok ? ((await res.json()) as Meta) : null;
-  } catch {
-    return null;
-  }
-}
+import { loadMeta, type AgentMeta } from "@/lib/meta";
 
 export default async function Prompts() {
   const meta = await loadMeta();

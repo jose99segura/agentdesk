@@ -95,15 +95,32 @@ are bundled into one digest. Alerts (dead letters, open circuits) are deduplicat
 30 minutes per alert, with the count of repeats suppressed.
 
 ```bash
-cd core && uv run pytest     # router, breaker, guards, and the database-role guarantees
+cd core && uv run pytest     # router, breaker, guards, Telegram, and the database-role guarantees
+cd core && uv run agentdesk eval --gate   # the golden suite; exits 1 when the gate is closed
 ```
+
+## Evaluations
+
+`core/evals/golden.yaml` holds twelve tickets with known right answers (six of them safety
+traps) against fixed fixtures. `agentdesk eval` runs each one through the real agents, checks
+behavioural assertions, grades the reply with an LLM judge when a real model is configured,
+stores the results (dashboard › Evals) and mirrors them to Langfuse as a dataset run with scores.
+CI runs it with `--gate` on every push.
+
+## n8n
+
+`n8n/build.py` authors the workflows as data and writes the JSON imported into n8n (folder
+`agentdesk`): a shared create-ticket sub-workflow, an intake webhook, a hosted contact form, a
+traffic generator, a daily report and an error handler. They need two credentials created in n8n,
+"agentdesk API (Bearer)" and "Telegram · Gustavo Asistente", and the API's public URL.
 
 ## Roadmap
 
 - [x] Phase 0: queue, runtime, gateway, guards, approvals, live dashboard, fault injection
 - [x] Telegram approvals, interruption budget, deduplicated alerts
 - [ ] Dashboard login
-- [ ] Evaluation layer: golden suites, judge rubric, safety cases, CI gate that blocks regressions
+- [x] Evaluation layer: golden suite, judge rubric, safety cases, CI gate, Langfuse datasets
+- [x] n8n workflows: intake webhook, contact form, traffic generator, daily report, error handler
 - [ ] MCP server over runs, audit log and evals
 - [ ] GCP: Cloud Run, Pub/Sub, BigQuery run warehouse, Terraform
 - [ ] Voice channel with ElevenLabs Agents

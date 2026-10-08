@@ -34,6 +34,12 @@ ControlC code, data or credentials, ever.
   sends, so long polling here does not conflict; if cerebro ever sets a webhook, give agentdesk its
   own bot.
 - Langfuse is the self-hosted one on Coolify; traces carry `environment=agentdesk-dev`.
+- **Evaluations** (`core/evals/golden.yaml`, `agentdesk.evals`) run against the `eval.*` fixtures in
+  `supabase/seed.sql`; the simulator never touches them. Eval runs carry `runs.eval_run_id` and are kept
+  out of every live view. A prompt or agent change must keep `agentdesk eval --gate` open.
+- **/info is served from the code**: `GET /meta` returns prompts, tool schemas, settings and the suite.
+  Change behaviour in the core and /info follows; only prose lives in the dashboard.
+- **n8n workflows are generated**: edit `n8n/build.py`, run it, re-import. Never hand-edit the JSON.
 - Code, comments, UI and docs in English (international portfolio).
 
 ## Local dev
@@ -43,6 +49,7 @@ npx supabase@2.120.0 start   # db :54322, API :54321, Studio :54323
 cd core && uv run agentdesk api | worker | simulate | telegram
 cd dashboard && pnpm dev --port 3020
 cd core && uv run pytest
+cd core && uv run agentdesk eval --gate
 ```
 
 `npx supabase@2.120.0 db reset` re-applies migrations and the seed (wipes local data).

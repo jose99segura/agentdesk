@@ -1,241 +1,337 @@
 import type { Metadata } from "next";
-import { Suspense, type ReactNode } from "react";
+import Link from "next/link";
+import { Suspense } from "react";
 import ArchitectureDiagram from "@/components/ArchitectureDiagram";
+import BreakerDiagram from "@/components/info/BreakerDiagram";
+import Evaluations from "@/components/info/Evaluations";
 import Failures from "@/components/info/Failures";
-import N8nIntake from "@/components/info/N8nIntake";
+import Glossary from "@/components/info/Glossary";
+import LangfuseTour from "@/components/info/LangfuseTour";
+import N8nWorkflows from "@/components/info/N8nWorkflows";
+import { Card3, Code, Section, Sub } from "@/components/info/parts";
 import Prompts from "@/components/info/Prompts";
-import { Card } from "@/components/ui";
+import Toc from "@/components/info/Toc";
 
 export const metadata: Metadata = { title: "How it works" };
 
+const TOC = [
+  { id: "overview", label: "What it is" },
+  { id: "tour", label: "A two-minute tour" },
+  { id: "architecture", label: "Architecture" },
+  { id: "ticket", label: "The life of a ticket" },
+  { id: "n8n", label: "Channels in n8n" },
+  { id: "agents", label: "Agents, prompts, tools" },
+  { id: "governance", label: "Governance" },
+  { id: "evals", label: "Evaluations" },
+  { id: "langfuse", label: "Tracing in Langfuse" },
+  { id: "failures", label: "When things go wrong" },
+  { id: "glossary", label: "Glossary" },
+  { id: "code", label: "Stack and code map" },
+];
+
+const TOUR = [
+  ["Overview", "/", "Is it healthy? Tickets, success rate, latency, cost, and what is waiting for you."],
+  ["Runs", "/runs", "Open any run to see each step, then jump to its full trace in Langfuse."],
+  ["Approvals", "/approvals", "Approve a refund. It runs only now, after a re-check, and lands in the audit log."],
+  ["Top bar", "/", "“simulate outage” on a provider: watch retries, fallback and the circuit breaker."],
+  ["Queue", "/queue", "Jobs out of retries wait here with a Retry button instead of being lost."],
+  ["Agents", "/agents", "The registry: who owns each agent, its risk tier, the exact tools it may call."],
+  ["Evals", "/evals", "The golden suite, case by case, and whether the gate is open."],
+  ["Audit log", "/audit", "Who decided what, and when: agents, people, the system."],
+] as const;
+
 const LIFECYCLE = [
-  {
-    title: "A message arrives",
-    body: "Email, chat, a form, or the simulator posts to the API. The sender's message id makes a redelivered webhook a no-op, and the ticket and its job are written in one transaction.",
-    code: "api.py · POST /tickets",
-  },
-  {
-    title: "It waits in a durable queue",
-    body: "A Postgres table, not a broker. Workers claim jobs with FOR UPDATE SKIP LOCKED, are woken by LISTEN/NOTIFY, and hold a lease so a crashed worker's job is picked up again.",
-    code: "jobs.py · claim()",
-  },
-  {
-    title: "Triage classifies it",
-    body: "A tier 0 agent with no tools returns intent, language and urgency as a schema-validated tool call. A malformed answer gets one repair turn, then the attempt fails and is retried.",
-    code: "agents/runner.py · run_triage()",
-  },
-  {
-    title: "The resolver looks things up",
-    body: "A tier 1 agent loops over model calls and tool calls. The gateway offers it three read-only tools, always scoped to the ticket's sender, so it cannot read another customer's orders.",
-    code: "gateway.py · Gateway.call()",
-  },
-  {
-    title: "Guards check the draft",
-    body: "Order ids it never looked up, refunds above what is left on the order or on someone else's order, and leaked emails block the run. Promises and prompt injection are flagged for the reviewer.",
-    code: "guards.py · check_resolution()",
-  },
-  {
-    title: "Effects become proposals",
-    body: "A reply (tier 2) and maybe a refund (tier 3) are written as pending proposals, together with the ticket status and an audit entry, in one transaction: all or nothing.",
-    code: "pipeline.py · process_ticket()",
-  },
-  {
-    title: "A human decides",
-    body: "On this dashboard or with a button in Telegram. Both go through the same executor, which locks the proposal, re-validates the refund against the order and is idempotent.",
-    code: "approvals.py · decide()",
-  },
-  {
-    title: "Everything is on the record",
-    body: "Each run and step is in the database as it happens, each model and tool call is a span in Langfuse, and each decision is in the audit log with who made it.",
-    code: "recorder.py · RunRecorder",
-  },
+  ["A message arrives", "From the n8n contact form or webhook (or the simulator), the API receives it. The sender's message id makes a redelivered webhook a no-op; the ticket and its job are written in one transaction.", "api.py · POST /tickets"],
+  ["It waits in a durable queue", "A Postgres table, not a separate broker. Workers claim jobs with FOR UPDATE SKIP LOCKED, are woken instantly by LISTEN/NOTIFY, and hold a lease so a crashed worker's job is picked up again.", "jobs.py · claim()"],
+  ["Triage classifies it", "A tier 0 agent with no tools returns intent, language and urgency as a schema-checked tool call. A malformed answer gets one repair turn; a second failure fails the attempt and the queue retries it later.", "agents/runner.py · run_triage()"],
+  ["The resolver looks things up", "A tier 1 agent alternates model calls and tool calls. The gateway offers it three read-only tools, always scoped to the ticket's sender, so it cannot read another customer's orders.", "gateway.py · Gateway.call()"],
+  ["Guards check the draft", "Order ids it never looked up, refunds above what is left on the order or on another customer's order, and leaked emails block the run. Promises and prompt injection are flagged for the reviewer.", "guards.py · check_resolution()"],
+  ["Effects become proposals", "A reply (tier 2) and maybe a refund (tier 3) are written as pending proposals, together with the ticket status and an audit entry, in one transaction: all or nothing.", "pipeline.py · process_ticket()"],
+  ["A person decides", "On the dashboard or with a button in Telegram. Both use the same executor, which locks the proposal, re-checks the refund against the order and ignores a second click.", "approvals.py · decide()"],
+  ["Everything is on the record", "Each run and step is in the database as it happens (that is what the dashboard shows live), each model and tool call is in Langfuse, and each decision is in the audit log.", "recorder.py · RunRecorder"],
 ];
 
 const GOVERNANCE = [
   ["Registry", "An agent runs only with a registered owner, risk tier and tool grant. Remove the row and it stops."],
-  ["Tool gateway", "The model is offered only granted tools; anything else is refused and logged as a blocked step."],
-  ["Database roles", "Agents connect as desk_agent, which has no grant on refunds, outbound messages or decisions. The forbidden write does not exist in its code path, and a test proves the database refuses it."],
-  ["Guards", "Deterministic checks on the output, against the database rather than against what the model claims to have seen."],
+  ["Tool gateway", "The model is offered only its granted tools; anything else is refused and logged as a blocked step."],
+  ["Database roles", "Agents connect as desk_agent, which has no permission on refunds, outgoing messages or decisions. The forbidden write has no code path, and a test proves the database refuses it."],
+  ["Guards", "Deterministic checks on the output, against the database rather than against what the model claims it saw."],
   ["Human approval", "The only path that refunds or sends. Re-validates, locks the row, records who decided."],
+];
+
+const CODE = [
+  ["core/src/agentdesk/api.py", "HTTP API: tickets, decisions, dead-letter retries, fault injection, /meta, /stats, /simulate"],
+  ["core/src/agentdesk/worker.py", "Worker threads, LISTEN/NOTIFY wake-up, lease reclaim, dead letters"],
+  ["core/src/agentdesk/pipeline.py", "Triage → resolve → guards → proposals, idempotent and atomic"],
+  ["core/src/agentdesk/llm/", "Mistral and Anthropic adapters, the offline stand-in, the router with retry, fallback and breakers"],
+  ["core/src/agentdesk/gateway.py", "Granted tools, bound to the ticket's sender"],
+  ["core/src/agentdesk/guards.py", "Blocks and flags on agent output"],
+  ["core/src/agentdesk/approvals.py", "The only code that refunds or sends"],
+  ["core/src/agentdesk/telegram.py", "Approval cards, digest, deduplicated alerts"],
+  ["core/src/agentdesk/evals/", "Golden suite runner, assertions, judge"],
+  ["core/evals/golden.yaml", "The evaluation cases"],
+  ["supabase/migrations/", "Schema, roles, grants and RLS: where governance is enforced"],
+  ["n8n/build.py", "The n8n workflows, authored as data"],
+  ["dashboard/", "This Next.js app, live through Supabase Realtime"],
+  [".github/workflows/ci.yml", "Lint, tests and the evaluation gate on every push"],
 ];
 
 const STACK = [
   ["Core", "Python 3.12, FastAPI, psycopg 3, Pydantic"],
-  ["Models", "Mistral and Anthropic over plain HTTP, one adapter each"],
-  ["Data", "Supabase (Postgres 17, Realtime, RLS)"],
+  ["Models", "Mistral and Anthropic over plain HTTP; offline stand-in for keyless runs"],
+  ["Data", "Supabase: Postgres 17, Realtime, row level security"],
+  ["Automation", "n8n: intake webhook, contact form, traffic, daily report, error handler"],
+  ["Tracing", "Langfuse, self-hosted, via its ingestion API; datasets and scores for evals"],
+  ["Approvals", "Dashboard and Telegram inline buttons"],
   ["Dashboard", "Next.js 16, React 19, Tailwind 4"],
-  ["Tracing", "Langfuse, self-hosted, via its ingestion API"],
-  ["Approvals", "Telegram Bot API, inline buttons"],
-  ["Tests", "pytest: router, breaker, guards, Telegram, database roles"],
-  ["Planned", "GCP (Cloud Run, Pub/Sub, BigQuery, Terraform), evals with a CI gate, MCP server, ElevenLabs voice, n8n node"],
+  ["Quality", "pytest, ruff, golden-suite evaluation gate in GitHub Actions"],
+  ["Deployment", "Google Cloud: Cloud Run, Terraform (in progress)"],
 ];
 
 export default function InfoPage() {
   return (
-    <article className="mx-auto max-w-4xl">
-      <header className="mb-10">
-        <p className="text-xs font-medium uppercase tracking-widest text-brand">How it works</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Agents that do the work, humans who make the calls</h1>
-        <p className="mt-4 text-base leading-relaxed text-muted">
-          agentdesk is a team of AI agents handling customer support for an online store. They read each message, look up the
-          customer and the order, and draft a reply or a refund. None of them can send anything or move money: those actions only
-          exist as proposals a person approves. The store and its customers are a demo with simulated traffic; the platform, the
-          models, the approvals and the tracing are real.
-        </p>
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <Pillar title="Controlled" body="Registry, tool gateway and database roles: the dangerous action has no code path." />
-          <Pillar title="Verified" body="Schema-checked outputs and deterministic guards before anything is proposed." />
-          <Pillar title="Observable" body="Every step live on this dashboard, every call in Langfuse, every decision audited." />
-        </div>
-      </header>
+    <div className="flex gap-12">
+      <article className="min-w-0 max-w-3xl flex-1 space-y-16">
+        <header>
+          <p className="text-xs font-semibold uppercase tracking-widest text-brand">How it works</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Agents that do the work, people who make the calls</h1>
+          <p className="mt-4 text-lg leading-relaxed text-muted">
+            A complete, explained walk through agentdesk: what it does, how a ticket moves through it, how the agents are
+            controlled and tested, and how you can see every step.
+          </p>
+        </header>
 
-      <Section title="Architecture" lead="One request path from the left, one decision path along the bottom, and observability under all of it.">
-        <Card>
-          <div className="p-4">
+        <Section
+          id="overview"
+          number="01"
+          title="What it is"
+          lead="A team of AI agents that handles customer support for an online store."
+          plain={
+            <>
+              Customers write in by email, chat or a contact form. The agents read each message, look up the customer and the
+              order, and write a reply, and sometimes suggest a refund. They are not allowed to send anything or give money back
+              on their own: those actions wait for a person to press Approve. Everything they do is visible live on this
+              dashboard and recorded step by step.
+            </>
+          }
+        >
+          <Card3
+            items={[
+              ["Controlled", "Each agent can only use the tools it was given, and its database login cannot refund or send at all."],
+              ["Verified", "Every answer is checked by rules before a person sees it, and a test suite of known tickets runs on every change."],
+              ["Observable", "Every step is live on this dashboard, every model call is in Langfuse, every decision is in the audit log."],
+            ]}
+          />
+          <p className="text-sm leading-relaxed text-muted">
+            The store and its customers are a demo with simulated traffic. Everything else is real: the queue, the models, the
+            rules, the approvals from a phone, the tracing and the evaluation that guards every change.
+          </p>
+        </Section>
+
+        <Section id="tour" number="02" title="A two-minute tour" lead="Where to click, in order, to see the whole system work.">
+          <ol className="grid gap-2 sm:grid-cols-2">
+            {TOUR.map(([name, href, what], i) => (
+              <li key={name}>
+                <Link href={href} className="flex h-full gap-3 rounded-xl border border-line bg-panel p-4 transition-colors hover:border-line-strong">
+                  <span className="font-mono text-xs text-faint">{i + 1}</span>
+                  <span>
+                    <span className="text-sm font-semibold">{name}</span>
+                    <span className="mt-0.5 block text-sm text-muted">{what}</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </Section>
+
+        <Section
+          id="architecture"
+          number="03"
+          title="Architecture"
+          lead="One request path from left to right, one decision path along the bottom, and observability under all of it."
+          plain={
+            <>
+              Messages come in on the left and wait in line. A worker hands each one to two agents: the first sorts it, the
+              second looks things up and drafts an answer. Purple boxes are the safety rules; the amber box is you. Nothing
+              reaches the store on the bottom row without passing through you.
+            </>
+          }
+        >
+          <div className="rounded-xl border border-line bg-panel p-4">
             <ArchitectureDiagram />
           </div>
-        </Card>
-      </Section>
+        </Section>
 
-      <Section
-        title="Channels: the n8n intake"
-        lead="Customers reach the platform through n8n, which owns the channel: webhooks, forms, retries towards the API and the alert when it cannot get through."
-      >
-        <N8nIntake />
-      </Section>
+        <Section
+          id="ticket"
+          number="04"
+          title="The life of a ticket"
+          lead="What happens between “my order arrived broken” and a refund, and where each step lives in the code."
+        >
+          <ol className="relative space-y-6 border-l border-line pl-8">
+            {LIFECYCLE.map(([title, body, code], i) => (
+              <li key={title} className="relative">
+                <span className="absolute -left-[45px] grid h-7 w-7 place-items-center rounded-full border border-line-strong bg-panel text-xs font-semibold tabular-nums text-muted">
+                  {i + 1}
+                </span>
+                <h3 className="font-semibold">{title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-muted">{body}</p>
+                <span className="mt-2 inline-block">
+                  <Code>{code}</Code>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </Section>
 
-      <Section title="The life of a ticket" lead="What happens between “my order arrived broken” and a refund, and where it lives in the code.">
-        <ol className="relative space-y-6 border-l border-line pl-8">
-          {LIFECYCLE.map((s, i) => (
-            <li key={s.title} className="relative">
-              <span className="absolute -left-[45px] grid h-7 w-7 place-items-center rounded-full border border-line-strong bg-panel text-xs font-semibold tabular-nums text-muted">
-                {i + 1}
-              </span>
-              <h3 className="font-medium">{s.title}</h3>
-              <p className="mt-1 text-sm leading-relaxed text-muted">{s.body}</p>
-              <code className="mt-2 inline-block rounded bg-ink/[0.04] px-1.5 py-0.5 font-mono text-[11px] text-faint">{s.code}</code>
-            </li>
-          ))}
-        </ol>
-      </Section>
+        <Section
+          id="n8n"
+          number="05"
+          title="Channels in n8n"
+          lead="n8n owns the edges: how customers reach the platform, the traffic that keeps the demo alive, the morning report and the alarms."
+          plain={
+            <>
+              n8n is a visual automation tool: each box is a step, each line is where the data goes next. It handles the
+              outside world (forms, webhooks, schedules, Telegram), and hands the actual work to the platform through its API.
+              The agents, their rules and their retries stay in the platform, not in n8n.
+            </>
+          }
+        >
+          <N8nWorkflows />
+        </Section>
 
-      <Section
-        title="Prompts and tools"
-        lead="Exactly what each agent receives, served live by the core API from the code that runs: system prompt, the shape of the user message, and the JSON schema of every tool."
-      >
-        <Suspense fallback={<p className="text-sm text-faint">Loading the live prompts…</p>}>
-          <Prompts />
-        </Suspense>
-      </Section>
+        <Section
+          id="agents"
+          number="06"
+          title="Agents, prompts and tools"
+          lead="Exactly what each agent receives, served live by the core API from the code that runs: the system prompt, the shape of the message, and the schema of every tool."
+          plain={
+            <>
+              A prompt is the instruction sheet an agent reads before each ticket. Tools are the only things it can do: look up
+              the customer, list their orders, open one order. It answers by filling in a form (a JSON schema) rather than writing
+              free text, so the platform can check every field before anyone sees it.
+            </>
+          }
+        >
+          <Suspense fallback={<p className="text-sm text-faint">Loading the live prompts…</p>}>
+            <Prompts />
+          </Suspense>
+        </Section>
 
-      <Section
-        title="Governance in five layers"
-        lead="Each layer assumes the one above it failed. The strongest is the database: a prompt can be talked around, a missing grant cannot."
-      >
-        <div className="space-y-2">
-          {GOVERNANCE.map(([title, body], i) => (
-            <div key={title} className="flex gap-4 rounded-xl border border-line bg-panel p-4" style={{ marginLeft: `${i * 12}px` }}>
-              <span className="w-28 shrink-0 text-sm font-medium text-brand">{title}</span>
-              <p className="text-sm leading-relaxed text-muted">{body}</p>
-            </div>
-          ))}
-        </div>
-        <div className="mt-6 grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-4">
-          {[
-            ["0", "Read internal data", "agent"],
-            ["1", "Draft for a human", "agent"],
-            ["2", "Send to a customer", "human approves"],
-            ["3", "Move money", "human approves, re-validated"],
-          ].map(([tier, label, who]) => (
-            <div key={tier} className="bg-panel p-4">
-              <div className="text-xs text-faint">Tier {tier}</div>
-              <div className="mt-1 text-sm font-medium">{label}</div>
-              <div className="mt-0.5 text-xs text-faint">{who}</div>
-            </div>
-          ))}
-        </div>
-      </Section>
+        <Section
+          id="governance"
+          number="07"
+          title="Governance"
+          lead="Five layers, each assuming the one above it failed. The strongest is the database: a prompt can be talked around, a missing permission cannot."
+          plain={
+            <>
+              Telling a model “never refund without approval” is a request, not a guarantee. Here the agents&apos; database login
+              simply has no permission to refund, so it cannot happen, whatever the model is tricked into trying.
+            </>
+          }
+        >
+          <div className="space-y-2">
+            {GOVERNANCE.map(([title, body], i) => (
+              <div key={title} className="flex gap-4 rounded-xl border border-line bg-panel p-4" style={{ marginLeft: `${i * 12}px` }}>
+                <span className="w-28 shrink-0 text-sm font-semibold text-brand">{title}</span>
+                <p className="text-sm leading-relaxed text-muted">{body}</p>
+              </div>
+            ))}
+          </div>
+          <div className="grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-4">
+            {[
+              ["0", "Read internal data", "agent"],
+              ["1", "Draft for a person", "agent"],
+              ["2", "Send to a customer", "a person approves"],
+              ["3", "Move money", "a person approves, re-checked"],
+            ].map(([tier, label, who]) => (
+              <div key={tier} className="bg-panel p-4">
+                <div className="text-xs text-faint">Tier {tier}</div>
+                <div className="mt-1 text-sm font-semibold">{label}</div>
+                <div className="mt-0.5 text-xs text-faint">{who}</div>
+              </div>
+            ))}
+          </div>
+        </Section>
 
-      <Section
-        title="When things go wrong"
-        lead="Failures are expected and designed for, in the order a ticket meets them. Try “simulate outage” on the top bar, then watch Runs and Queue."
-      >
-        <Failures />
-        <Card className="mt-4">
-          <div className="p-5">
-            <h3 className="text-sm font-medium">Circuit breaker, per provider</h3>
+        <Section
+          id="evals"
+          number="08"
+          title="Evaluations"
+          lead="How we know the agents still behave after any change: tickets with known right answers, run through the real system, scored, and enforced in CI."
+          plain={
+            <>
+              Like an exam with an answer key. Twelve customer messages whose right handling we know in advance, including
+              six traps (another customer&apos;s order, a hidden “ignore your instructions”, an inflated refund). Every change to the
+              code or a prompt has to pass the exam before it can go live.
+            </>
+          }
+        >
+          <Suspense fallback={<p className="text-sm text-faint">Loading the suite…</p>}>
+            <Evaluations />
+          </Suspense>
+        </Section>
+
+        <Section
+          id="langfuse"
+          number="09"
+          title="Tracing in Langfuse"
+          lead="Langfuse records what the agents actually did, call by call, so any reply can be explained after the fact."
+          plain={
+            <>
+              The dashboard tells you <em>that</em> something happened; Langfuse tells you <em>why</em>. For any ticket you can
+              read exactly what the model was told, what it looked up, what it answered and what it cost.
+            </>
+          }
+        >
+          <LangfuseTour />
+        </Section>
+
+        <Section
+          id="failures"
+          number="10"
+          title="When things go wrong"
+          lead="Failures are expected and designed for, in the order a ticket meets them. Try “simulate outage” on the top bar, then watch Runs and Queue."
+          plain={
+            <>
+              Models time out, services go down, workers crash, people click twice. For each of these the system has a planned
+              reaction, and each one is visible somewhere you can check.
+            </>
+          }
+        >
+          <Failures />
+          <div className="rounded-xl border border-line bg-panel p-5">
+            <h3 className="text-sm font-semibold">Circuit breaker, per model provider</h3>
             <BreakerDiagram />
           </div>
-        </Card>
-      </Section>
+        </Section>
 
-      <Section title="Observability" lead="Three views of the same run, for three different questions.">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Pillar title="This dashboard" body="Is the system healthy right now? Runs, queue, approvals and provider state, pushed live by Supabase Realtime." />
-          <Pillar title="Langfuse" body="Why did this run do that? The full prompt, every tool call, tokens and cost, one trace per ticket." />
-          <Pillar title="Audit log" body="Who decided what, and when? Agents' proposals, humans' decisions, blocks and dead letters." />
-        </div>
-      </Section>
+        <Section id="glossary" number="11" title="Glossary" lead="The terms used on this page, in one line each.">
+          <Glossary />
+        </Section>
 
-      <Section title="Stack">
-        <dl className="divide-y divide-line rounded-xl border border-line bg-panel">
-          {STACK.map(([k, v]) => (
-            <div key={k} className="grid grid-cols-[8rem_1fr] gap-4 px-4 py-3 text-sm">
-              <dt className="text-faint">{k}</dt>
-              <dd className="text-muted">{v}</dd>
-            </div>
-          ))}
-        </dl>
-      </Section>
-    </article>
-  );
-}
-
-function Section({ title, lead, children }: { title: string; lead?: string; children: ReactNode }) {
-  return (
-    <section className="mt-14">
-      <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
-      {lead && <p className="mt-1.5 text-sm text-muted">{lead}</p>}
-      <div className="mt-5">{children}</div>
-    </section>
-  );
-}
-
-function Pillar({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="rounded-xl border border-line bg-panel p-4">
-      <h3 className="text-sm font-medium">{title}</h3>
-      <p className="mt-1 text-sm leading-relaxed text-muted">{body}</p>
+        <Section id="code" number="12" title="Stack and code map" lead="What it is built with, and where each idea lives in the repository.">
+          <dl className="divide-y divide-line rounded-xl border border-line bg-panel">
+            {STACK.map(([k, v]) => (
+              <div key={k} className="grid grid-cols-[7rem_1fr] gap-4 px-4 py-3 text-sm">
+                <dt className="text-faint">{k}</dt>
+                <dd className="text-muted">{v}</dd>
+              </div>
+            ))}
+          </dl>
+          <Sub title="Code map">
+            <ul className="divide-y divide-line rounded-xl border border-line bg-panel">
+              {CODE.map(([path, what]) => (
+                <li key={path} className="grid gap-1 px-4 py-2.5 sm:grid-cols-[17rem_1fr] sm:gap-4">
+                  <span className="font-mono text-xs text-ink">{path}</span>
+                  <span className="text-sm text-muted">{what}</span>
+                </li>
+              ))}
+            </ul>
+          </Sub>
+        </Section>
+      </article>
+      <Toc items={TOC} />
     </div>
-  );
-}
-
-function BreakerDiagram() {
-  const node = (x: number, label: string, sub: string, color: string) => (
-    <g>
-      <rect x={x} y="30" width="160" height="56" rx="28" fill="var(--panel-2)" stroke={color} />
-      <text x={x + 80} y="55" textAnchor="middle" fontSize="13" fontWeight="600" fill="var(--ink)">{label}</text>
-      <text x={x + 80} y="72" textAnchor="middle" fontSize="11" fill="var(--muted)">{sub}</text>
-    </g>
-  );
-  return (
-    <svg viewBox="0 0 700 140" className="mt-3 w-full" role="img" aria-label="Circuit breaker states">
-      <defs>
-        <marker id="bh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-          <path d="M1 1L9 5L1 9" fill="none" stroke="color-mix(in srgb, var(--ink) 55%, transparent)" strokeWidth="1.5" />
-        </marker>
-      </defs>
-      {node(20, "Closed", "calls go through", "var(--ok)")}
-      {node(270, "Open", "calls skip it", "var(--bad)")}
-      {node(520, "Half open", "one probe call", "var(--warn)")}
-      <path d="M180 50 L268 50" stroke="color-mix(in srgb, var(--ink) 40%, transparent)" fill="none" markerEnd="url(#bh)" />
-      <text x="224" y="42" textAnchor="middle" fontSize="11" fill="var(--muted)">3 failures</text>
-      <path d="M430 50 L518 50" stroke="color-mix(in srgb, var(--ink) 40%, transparent)" fill="none" markerEnd="url(#bh)" />
-      <text x="474" y="42" textAnchor="middle" fontSize="11" fill="var(--muted)">after 30s</text>
-      <path d="M520 72 L432 72" stroke="color-mix(in srgb, var(--ink) 40%, transparent)" fill="none" markerEnd="url(#bh)" />
-      <text x="476" y="90" textAnchor="middle" fontSize="11" fill="var(--muted)">probe fails</text>
-      <path d="M600 86 C600 130, 100 130, 100 88" stroke="color-mix(in srgb, var(--ink) 40%, transparent)" fill="none" markerEnd="url(#bh)" />
-      <text x="350" y="125" textAnchor="middle" fontSize="11" fill="var(--muted)">probe succeeds</text>
-    </svg>
   );
 }
