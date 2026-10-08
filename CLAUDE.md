@@ -46,6 +46,23 @@ ControlC code, data or credentials, ever.
 - **n8n workflows are generated**: edit `n8n/build.py`, run it, re-import. Never hand-edit the JSON.
 - Code, comments, UI and docs in English (international portfolio).
 
+## Production database
+
+Supabase project `cinyqwetgzjgfcgzinxo` on the **personal** account (never the TS Lux / Control C
+connector). Migrations go with the CLI, linked once by the user (`supabase login --token`, then
+`supabase link --project-ref cinyqwetgzjgfcgzinxo`; the link lives in the gitignored `supabase/.temp`):
+
+```bash
+npx supabase@2.120.0 db push --dry-run   # always look first
+npx supabase@2.120.0 db push
+```
+
+`seed.sql` is local-only (dev role passwords, demo store, eval fixtures) and is never pushed. In
+production the `desk_agent` / `desk_api` login passwords are set by hand when the API is deployed,
+and the demo store is loaded separately. All six migrations were applied on 2026-10-08 and checked:
+19 tables with RLS, the agent role without grants on refunds-write, outbound messages or decisions,
+and anon able to read the platform tables but not the store.
+
 ## Local dev
 
 ```bash
