@@ -17,7 +17,7 @@ GEN="$DIR/generated.env"
 mkdir -p "$DIR"
 
 rand() { python -c "import secrets; print(secrets.token_urlsafe(32).replace('-', 'x').replace('_', 'y'))"; }
-val() { grep -E "^$1=" "$2" | tail -1 | cut -d= -f2-; }
+val() { grep -E "^[[:space:]]*$1=" "$2" | tail -1 | cut -d= -f2- | tr -d '\r' | sed -E 's/^[[:space:]]+|[[:space:]]+$//g'; }
 
 generate() {
   if [ ! -f "$GEN" ]; then

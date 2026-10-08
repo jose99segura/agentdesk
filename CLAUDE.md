@@ -63,6 +63,30 @@ and the demo store is loaded separately. All six migrations were applied on 2026
 19 tables with RLS, the agent role without grants on refunds-write, outbound messages or decisions,
 and anon able to read the platform tables but not the store.
 
+## Production on Google Cloud
+
+Project `agentdesk-jose99` (billing on the personal account), region `europe-west1`, all in
+`infra/` (Terraform, local state in `infra/`, gitignored).
+
+| Service | URL | Access |
+|---|---|---|
+| API | https://agentdesk-api-pzm2fnni7a-ew.a.run.app | public; bearer token on every route but /health, /meta and the Telegram webhook (secret header) |
+| Dashboard | https://agentdesk-dashboard-pzm2fnni7a-ew.a.run.app | public, read-only (`DASHBOARD_ACTIONS_ENABLED=false`: no login yet) |
+| Worker | https://agentdesk-worker-pzm2fnni7a-ew.a.run.app | private: only the invoker service account (Pub/Sub push, Scheduler) |
+
+- **Deploy:** `bash infra/deploy.sh agentdesk-jose99` builds both images on Cloud Build (tagged
+  with the commit), applies Terraform and re-registers the Telegram webhook. Commit first.
+- **Secrets:** values only in Secret Manager. `bash infra/secrets.sh push` re-sends them from
+  `core/.env` and `infra/.secrets/generated.env` (role passwords, API token, webhook secret),
+  both gitignored. A new Anthropic key also needs `with_anthropic = true` in Terraform.
+- **Production DB bootstrap** (role passwords + demo store) was applied with
+  `supabase db push --include-roles` from a temporary `supabase/roles.sql`, deleted right after;
+  never commit that file.
+- Telegram runs by **webhook** in production; the local `agentdesk telegram` therefore starts in
+  send-only mode while the webhook is set.
+- Verified on 2026-10-08: a ticket went API → Pub/Sub → worker → Mistral → proposals in 28 s
+  (cold start), and the Scheduler sweep sent its Telegram cards a minute later.
+
 ## Local dev
 
 ```bash

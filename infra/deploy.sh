@@ -11,7 +11,7 @@ REGION="europe-west1"
 REGISTRY="$REGION-docker.pkg.dev/$PROJECT/agentdesk"
 TAG="$(git rev-parse --short=12 HEAD)"
 SUPABASE_URL="https://cinyqwetgzjgfcgzinxo.supabase.co"
-TF="terraform -chdir=infra"
+TF="terraform.exe -chdir=infra"
 
 echo "== images ($TAG)"
 gcloud builds submit core --project "$PROJECT" --region "$REGION" --tag "$REGISTRY/core:$TAG" --quiet
