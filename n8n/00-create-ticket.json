@@ -116,13 +116,13 @@
       ],
       "credentials": {
         "httpBearerAuth": {
-          "id": "",
+          "id": "YwSzDSgZ2hfqO1Ts",
           "name": "agentdesk API (Bearer)"
         }
       },
       "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
       "onError": "continueErrorOutput"
     },
     {
@@ -178,7 +178,7 @@
       ],
       "credentials": {
         "telegramApi": {
-          "id": "",
+          "id": "jpqRohOJq3akCo2G",
           "name": "Telegram · Gustavo Asistente"
         }
       },

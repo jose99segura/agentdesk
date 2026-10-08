@@ -62,8 +62,9 @@ resource "google_cloud_run_v2_service" "api" {
     containers {
       image = var.core_image
       resources {
-        limits   = { cpu = "1", memory = "512Mi" }
-        cpu_idle = true
+        limits            = { cpu = "1", memory = "512Mi" }
+        cpu_idle          = true
+        startup_cpu_boost = true
       }
       dynamic "env" {
         for_each = merge(local.common_env, {
@@ -89,11 +90,12 @@ resource "google_cloud_run_v2_service" "api" {
           }
         }
       }
+      # The process, not the database: a slow first connection must not get the instance killed.
       startup_probe {
-        http_get { path = "/health" }
+        http_get { path = "/livez" }
         initial_delay_seconds = 2
         period_seconds        = 5
-        failure_threshold     = 6
+        failure_threshold     = 24
       }
     }
   }
@@ -118,8 +120,9 @@ resource "google_cloud_run_v2_service" "worker" {
     containers {
       image = var.core_image
       resources {
-        limits   = { cpu = "1", memory = "512Mi" }
-        cpu_idle = true
+        limits            = { cpu = "1", memory = "512Mi" }
+        cpu_idle          = true
+        startup_cpu_boost = true
       }
       dynamic "env" {
         for_each = merge(local.common_env, {
@@ -145,11 +148,12 @@ resource "google_cloud_run_v2_service" "worker" {
           }
         }
       }
+      # The process, not the database: a slow first connection must not get the instance killed.
       startup_probe {
-        http_get { path = "/health" }
+        http_get { path = "/livez" }
         initial_delay_seconds = 2
         period_seconds        = 5
-        failure_threshold     = 6
+        failure_threshold     = 24
       }
     }
   }
@@ -175,8 +179,9 @@ resource "google_cloud_run_v2_service" "dashboard" {
         container_port = 3000
       }
       resources {
-        limits   = { cpu = "1", memory = "512Mi" }
-        cpu_idle = true
+        limits            = { cpu = "1", memory = "512Mi" }
+        cpu_idle          = true
+        startup_cpu_boost = true
       }
       env {
         name  = "CORE_API_URL"

@@ -55,7 +55,7 @@
       ],
       "credentials": {
         "httpBearerAuth": {
-          "id": "",
+          "id": "YwSzDSgZ2hfqO1Ts",
           "name": "agentdesk API (Bearer)"
         }
       },
@@ -95,7 +95,7 @@
       ],
       "credentials": {
         "telegramApi": {
-          "id": "",
+          "id": "jpqRohOJq3akCo2G",
           "name": "Telegram · Gustavo Asistente"
         }
       }

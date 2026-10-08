@@ -49,6 +49,12 @@ def health() -> dict:
     return {"ok": True}
 
 
+@app.get("/livez")
+def livez() -> dict:
+    """Cloud Run's startup probe: the process serves. /health also checks the database."""
+    return {"ok": True}
+
+
 @app.get("/meta")
 def meta() -> dict:
     """Prompts, tool schemas and reliability settings, straight from the running code."""

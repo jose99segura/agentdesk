@@ -16,8 +16,8 @@ HERE = Path(__file__).parent
 # The production API on Cloud Run. Change here (and re-import) when a custom domain is mapped.
 API = "https://agentdesk-api-pzm2fnni7a-ew.a.run.app"
 CHAT_ID = "232114558"
-API_CRED = {"httpBearerAuth": {"id": "", "name": "agentdesk API (Bearer)"}}
-TG_CRED = {"telegramApi": {"id": "", "name": "Telegram · Gustavo Asistente"}}
+API_CRED = {"httpBearerAuth": {"id": "YwSzDSgZ2hfqO1Ts", "name": "agentdesk API (Bearer)"}}
+TG_CRED = {"telegramApi": {"id": "jpqRohOJq3akCo2G", "name": "Telegram · Gustavo Asistente"}}
 
 _n = 0
 
@@ -58,7 +58,7 @@ def http_create_ticket(position):
         {"method": "POST", "url": f"{API}/tickets", "authentication": "genericCredentialType",
          "genericAuthType": "httpBearerAuth", "sendBody": True, "specifyBody": "json",
          "jsonBody": "={{ JSON.stringify($json.ticket) }}", "options": {"timeout": 10000}},
-        credentials=API_CRED, retryOnFail=True, maxTries=3, waitBetweenTries=2000,
+        credentials=API_CRED, retryOnFail=True, maxTries=5, waitBetweenTries=5000,
         onError="continueErrorOutput",
     )
 

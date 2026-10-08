@@ -53,6 +53,11 @@ def health() -> dict:
     return {"ok": True}
 
 
+@app.get("/livez")
+def livez() -> dict:
+    return {"ok": True}
+
+
 @app.post("/pubsub")
 def on_message() -> Response:
     # The message only says "there is work"; which job is decided by the queue.

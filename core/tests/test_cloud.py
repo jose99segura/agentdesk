@@ -39,3 +39,7 @@ def test_pubsub_is_a_no_op_without_a_topic(monkeypatch):
     monkeypatch.delenv("PUBSUB_TOPIC", raising=False)
     wake_workers("anything")  # must not try to reach the metadata server
     config.settings.cache_clear()
+
+
+def test_livez_answers_without_the_database():
+    assert TestClient(api.app).get("/livez").json() == {"ok": True}

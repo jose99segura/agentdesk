@@ -204,7 +204,12 @@ class TelegramService:
             )
             verdict = f"⚠️ Not executed: {exc}"
         self._log(conn, "decision", proposal_id, ok=True)
-        self.bot.call("answerCallbackQuery", callback_query_id=cb["id"], text=verdict[:200])
+        # The decision is already committed. Telegram refuses an answer to a button pressed
+        # too long ago (a cold start can take that long); the edited card below still tells.
+        try:
+            self.bot.call("answerCallbackQuery", callback_query_id=cb["id"], text=verdict[:200])
+        except TelegramError as exc:
+            log.warning("answerCallbackQuery: %s", exc)
         message = cb["message"]
         self.bot.call("editMessageText", chat_id=chat_id, message_id=message["message_id"],
                       text=f"{_e(message.get('text', ''))}\n\n<b>{_e(verdict)}</b> by {_e(actor)}",
