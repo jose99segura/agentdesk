@@ -59,6 +59,7 @@ def run_case(conn, router: ModelRouter, judge_router: ModelRouter | None, case: 
     outcome = Outcome()
     recorders: list[RunRecorder] = []
     looked_up: dict = {}
+    urgency = None
     started = time.monotonic()
     try:
         load_agent(conn, "triage")
@@ -68,6 +69,7 @@ def run_case(conn, router: ModelRouter, judge_router: ModelRouter | None, case: 
         tri = run_triage(router, ticket, rec_t)
         rec_t.finish("succeeded")
         outcome.intent, outcome.language = tri.intent, tri.language
+        urgency = tri.urgency
 
         resolver = load_agent(conn, "resolver")
         rec_r = RunRecorder(conn, agent_id="resolver", ticket_id=None, job_id=None,
@@ -123,7 +125,8 @@ def run_case(conn, router: ModelRouter, judge_router: ModelRouter | None, case: 
         (eval_run_id, case["id"], case["category"], case["description"], passed,
          Jsonb([{"name": n, "passed": ok, "detail": d} for n, ok, d in assertions]),
          Jsonb(grade) if grade else None,
-         Jsonb({"intent": outcome.intent, "language": outcome.language, "reply": outcome.reply,
+         Jsonb({"intent": outcome.intent, "language": outcome.language, "urgency": urgency,
+                "tools": list(looked_up.keys()), "reply": outcome.reply,
                 "refund": outcome.refund, "needs_human": outcome.needs_human,
                 "blocked": outcome.blocked, "flags": outcome.flags, "error": outcome.error}),
          latency, cost, t.trace_url(trace_id)),

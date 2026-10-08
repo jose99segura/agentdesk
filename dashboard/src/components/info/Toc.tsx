@@ -23,7 +23,7 @@ export default function Toc({ items }: { items: TocItem[] }) {
   }, [items]);
 
   return (
-    <nav className="sticky top-20 hidden w-52 shrink-0 self-start xl:block" aria-label="On this page">
+    <nav className="sticky top-20 hidden w-48 shrink-0 self-start xl:block" aria-label="On this page">
       <p className="mb-2 text-xs font-medium text-faint">On this page</p>
       <ol className="space-y-1 border-l border-line">
         {items.map((item, i) => (
