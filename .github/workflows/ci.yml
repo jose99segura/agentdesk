@@ -55,6 +55,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          # The pnpm version is pinned in the dashboard's packageManager, not at the root.
+          package_json_file: dashboard/package.json
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -62,4 +65,6 @@ jobs:
           cache-dependency-path: dashboard/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
-      - run: npx tsc --noEmit
+      # Route types (LayoutProps, PageProps) are generated into .next, which a fresh checkout lacks.
+      - run: pnpm exec next typegen
+      - run: pnpm exec tsc --noEmit
