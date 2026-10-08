@@ -13,7 +13,8 @@ import json
 from pathlib import Path
 
 HERE = Path(__file__).parent
-API = "https://agentdesk-api.senaproject.online"
+# The production API on Cloud Run. Change here (and re-import) when a custom domain is mapped.
+API = "https://agentdesk-api-pzm2fnni7a-ew.a.run.app"
 CHAT_ID = "232114558"
 API_CRED = {"httpBearerAuth": {"id": "", "name": "agentdesk API (Bearer)"}}
 TG_CRED = {"telegramApi": {"id": "", "name": "Telegram · Gustavo Asistente"}}

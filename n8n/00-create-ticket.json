@@ -96,7 +96,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://agentdesk-api.senaproject.online/tickets",
+        "url": "https://agentdesk-api-pzm2fnni7a-ew.a.run.app/tickets",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpBearerAuth",
         "sendBody": true,

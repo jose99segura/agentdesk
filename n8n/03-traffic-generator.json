@@ -53,7 +53,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://agentdesk-api.senaproject.online/simulate",
+        "url": "https://agentdesk-api-pzm2fnni7a-ew.a.run.app/simulate",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpBearerAuth",
         "sendBody": true,
