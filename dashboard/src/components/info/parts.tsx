@@ -20,8 +20,10 @@ export function Section({
     <section id={id} className="scroll-mt-20 border-t border-line pt-12 first:border-0 first:pt-0">
       <p className="font-mono text-xs text-brand">{number}</p>
       <h2 className="mt-1 text-2xl font-semibold tracking-tight">{title}</h2>
-      {lead && <p className="mt-2 text-base leading-relaxed text-muted">{lead}</p>}
-      {plain && <Plain>{plain}</Plain>}
+      <div className="max-w-3xl">
+        {lead && <p className="mt-2 text-base leading-relaxed text-muted">{lead}</p>}
+        {plain && <Plain>{plain}</Plain>}
+      </div>
       <div className="mt-6 space-y-6">{children}</div>
     </section>
   );
@@ -41,7 +43,7 @@ export function Sub({ title, children }: { title: string; children: ReactNode })
   return (
     <div>
       <h3 className="text-base font-semibold">{title}</h3>
-      <div className="mt-2 space-y-3 text-sm leading-relaxed text-muted">{children}</div>
+      <div className="mt-2 max-w-3xl space-y-3 text-sm leading-relaxed text-muted">{children}</div>
     </div>
   );
 }

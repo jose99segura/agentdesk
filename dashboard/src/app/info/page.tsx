@@ -2,6 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import ArchitectureDiagram from "@/components/ArchitectureDiagram";
+import { AgentAnatomy, ModelFallback, ResolverLoop } from "@/components/diagrams/agents";
+import { EvalPipeline } from "@/components/diagrams/evals";
+import { N8nMap, ObservabilityMap, TicketSequence } from "@/components/diagrams/flows";
+import { AttackLayers, PermissionMatrix } from "@/components/diagrams/governance";
+import { Figure } from "@/components/diagrams/kit";
+import { JobStates, ProposalStates } from "@/components/diagrams/states";
 import BreakerDiagram from "@/components/info/BreakerDiagram";
 import Evaluations from "@/components/info/Evaluations";
 import Failures from "@/components/info/Failures";
@@ -91,8 +97,8 @@ const STACK = [
 export default function InfoPage() {
   return (
     <div className="flex gap-12">
-      <article className="min-w-0 max-w-3xl flex-1 space-y-16">
-        <header>
+      <article className="min-w-0 max-w-5xl flex-1 space-y-16">
+        <header className="max-w-3xl">
           <p className="text-xs font-semibold uppercase tracking-widest text-brand">How it works</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Agents that do the work, people who make the calls</h1>
           <p className="mt-4 text-lg leading-relaxed text-muted">
@@ -168,6 +174,9 @@ export default function InfoPage() {
           title="The life of a ticket"
           lead="What happens between “my order arrived broken” and a refund, and where each step lives in the code."
         >
+          <Figure caption="Read top to bottom: each arrow is one message between two parts of the system. Dashed arrows are answers. The amber step is the only one that needs a person.">
+            <TicketSequence />
+          </Figure>
           <ol className="relative space-y-6 border-l border-line pl-8">
             {LIFECYCLE.map(([title, body, code], i) => (
               <li key={title} className="relative">
@@ -197,6 +206,9 @@ export default function InfoPage() {
             </>
           }
         >
+          <Figure caption="How the six workflows fit together: two entry points share one ticket-creating sub-workflow, two schedules talk to the API directly, and every failure ends up on Telegram.">
+            <N8nMap />
+          </Figure>
           <N8nWorkflows />
         </Section>
 
@@ -213,6 +225,24 @@ export default function InfoPage() {
             </>
           }
         >
+          <Sub title="The two AI agents">
+            <p>
+              There are exactly two agents, each a model with one job, its own prompt, its own tools and a fixed output form.
+              Neither can act on the outside world: their output is checked, then proposed to a person.
+            </p>
+          </Sub>
+          <Figure caption="Triage reads the ticket and fills one form: what it is about, which language, how urgent. It has no tools, so it cannot look anything up or leak anything.">
+            <AgentAnatomy kind="triage" />
+          </Figure>
+          <Figure caption="The resolver can look up the sender and their orders through the gateway, then fills the resolution form: the reply, and a refund only if one is justified.">
+            <AgentAnatomy kind="resolver" />
+          </Figure>
+          <Figure caption="How the resolver works inside: it asks for data, gets it, asks again if needed, and finishes by submitting its answer. A malformed answer gets one chance to be fixed.">
+            <ResolverLoop />
+          </Figure>
+          <Sub title="Their exact prompts and tools">
+            <p>Served live from the code that runs, so this is precisely what each model receives.</p>
+          </Sub>
           <Suspense fallback={<p className="text-sm text-faint">Loading the live prompts…</p>}>
             <Prompts />
           </Suspense>
@@ -230,6 +260,9 @@ export default function InfoPage() {
             </>
           }
         >
+          <Figure caption="The same attack meets every layer. The prompt alone could be talked around (dashed); each of the four solid layers would stop it by itself.">
+            <AttackLayers />
+          </Figure>
           <div className="space-y-2">
             {GOVERNANCE.map(([title, body], i) => (
               <div key={title} className="flex gap-4 rounded-xl border border-line bg-panel p-4" style={{ marginLeft: `${i * 12}px` }}>
@@ -238,6 +271,10 @@ export default function InfoPage() {
               </div>
             ))}
           </div>
+          <Sub title="Who may touch what">
+            <p>The real permissions, table by table. Red is the point of the design: the agents cannot move money or send anything.</p>
+          </Sub>
+          <PermissionMatrix />
           <div className="grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-4">
             {[
               ["0", "Read internal data", "agent"],
@@ -267,6 +304,9 @@ export default function InfoPage() {
             </>
           }
         >
+          <Figure caption="Each case runs through the real agents, is checked twice (exact assertions and a judge), and the gate decides whether the change may be merged. Every result is stored and compared.">
+            <EvalPipeline />
+          </Figure>
           <Suspense fallback={<p className="text-sm text-faint">Loading the suite…</p>}>
             <Evaluations />
           </Suspense>
@@ -284,6 +324,9 @@ export default function InfoPage() {
             </>
           }
         >
+          <Figure caption="Three records of the same work, each answering a different question.">
+            <ObservabilityMap />
+          </Figure>
           <LangfuseTour />
         </Section>
 
@@ -299,6 +342,15 @@ export default function InfoPage() {
             </>
           }
         >
+          <Figure caption="A model call: providers are tried in order, each twice. Only when all of them fail does the whole job go back to the queue.">
+            <ModelFallback />
+          </Figure>
+          <Figure caption="A job in the queue: every way it can fail leads somewhere visible, and nothing disappears.">
+            <JobStates />
+          </Figure>
+          <Figure caption="A proposal after the agent is done: only a person moves it, and the executor re-checks before acting.">
+            <ProposalStates />
+          </Figure>
           <Failures />
           <div className="rounded-xl border border-line bg-panel p-5">
             <h3 className="text-sm font-semibold">Circuit breaker, per model provider</h3>
