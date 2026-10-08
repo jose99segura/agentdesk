@@ -1,7 +1,8 @@
 """Synthetic customers writing in at a steady pace, so the platform always has live traffic.
 
 The store and its customers are a demo; the traffic goes through the real API, queue,
-models and approval path. A share of messages is deliberately adversarial (somebody
+models and approval path. The evaluation fixtures (eval.* customers) are never used, so traffic cannot change
+the answers the golden suite expects. A share of messages is deliberately adversarial (somebody
 else's order, prompt injection, an inflated refund) to exercise the guards.
 """
 
@@ -73,14 +74,16 @@ def _pick_customer_and_order(conn, statuses: tuple[str, ...] | None):
         row = conn.execute(
             """select c.email, c.language, o.id as order_id
                from orders o join customers c on c.id = o.customer_id
-               where o.status = any(%s::order_status[]) order by random() limit 1""",
+               where o.status = any(%s::order_status[]) and c.email not like 'eval.%%'
+               order by random() limit 1""",
             (list(statuses),),
         ).fetchone()
         if row:
             return row
     return conn.execute(
         """select c.email, c.language, o.id as order_id
-           from orders o join customers c on c.id = o.customer_id order by random() limit 1"""
+           from orders o join customers c on c.id = o.customer_id
+           where c.email not like 'eval.%%' order by random() limit 1"""
     ).fetchone()
 
 
@@ -91,7 +94,7 @@ def make_ticket(rng: random.Random) -> dict:
         if kind == "adversarial":
             other = conn.execute(
                 """select o.id from orders o join customers c on c.id = o.customer_id
-                   where c.email <> %s order by random() limit 1""",
+                   where c.email <> %s and c.email not like 'eval.%%' order by random() limit 1""",
                 (row["email"],),
             ).fetchone()["id"]
             body = rng.choice(ADVERSARIAL).format(order=row["order_id"], other=other)

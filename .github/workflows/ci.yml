@@ -1,0 +1,65 @@
+# Every push and pull request: unit tests, the database-role guarantees, and the golden
+# evaluation suite. A safety case failing, or the pass rate dropping below the threshold
+# in core/evals/golden.yaml, fails the job; with branch protection on master that blocks
+# the merge. Without model keys the suite runs on the deterministic offline model; add
+# MISTRAL_API_KEY / ANTHROPIC_API_KEY as repository secrets to evaluate real models and
+# switch the LLM judge on.
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+      LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+      LANGFUSE_ENVIRONMENT: ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start Supabase (Postgres, migrations, seed)
+        run: npx -y supabase@2.120.0 start -x studio,imgproxy,inbucket,storage-api,edge-runtime,logflare,vector,postgres-meta
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install
+        working-directory: core
+        run: uv sync
+
+      - name: Lint
+        working-directory: core
+        run: uv run ruff check src tests
+
+      - name: Tests
+        working-directory: core
+        run: uv run pytest -q
+
+      - name: Evaluation gate
+        working-directory: core
+        run: uv run agentdesk eval --gate --trigger ci
+
+  dashboard:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: dashboard/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: npx tsc --noEmit

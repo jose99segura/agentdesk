@@ -68,3 +68,29 @@ from (select order_id, sum(quantity * price_cents) as total from order_items gro
 where s.order_id = o.id;
 
 insert into chaos (provider, fail) values ('mistral', false), ('anthropic', false), ('offline', false);
+
+-- Fixtures for the evaluation suite (core/evals/golden.yaml): three customers with
+-- known orders, so every case can assert exact ids and amounts.
+insert into customers (email, name, language) values
+  ('eval.alice@example.com', 'Alice Martin', 'en'),
+  ('eval.bruno@example.com', 'Bruno Ruiz', 'es'),
+  ('eval.chloe@example.com', 'Chloé Moreau', 'fr');
+
+insert into orders (id, customer_id, status, total_cents, carrier, tracking, created_at, shipped_at, delivered_at)
+select v.id, c.id, v.status::order_status, v.total, v.carrier, v.tracking,
+       now() - v.age, now() - v.age + interval '1 day',
+       case when v.status = 'delivered' then now() - v.age + interval '4 days' end
+from (values
+  ('ORD-90001', 'eval.alice@example.com', 'delivered', 6400, 'DHL', 'TRK-EVAL-1', interval '12 days'),
+  ('ORD-90002', 'eval.alice@example.com', 'shipped', 2200, 'Post Luxembourg', 'TRK-EVAL-2', interval '2 days'),
+  ('ORD-90003', 'eval.bruno@example.com', 'delivered', 12900, 'UPS', 'TRK-EVAL-3', interval '9 days'),
+  ('ORD-90004', 'eval.bruno@example.com', 'processing', 4500, null, null, interval '1 day'),
+  ('ORD-90005', 'eval.chloe@example.com', 'delivered', 4500, 'DHL', 'TRK-EVAL-5', interval '15 days')
+) as v(id, email, status, total, carrier, tracking, age)
+join customers c on c.email = v.email;
+
+update orders set shipped_at = null where id = 'ORD-90004';
+
+-- Chloé was already refunded 10 € on ORD-90005: at most 35 € remains.
+insert into refunds (order_id, amount_cents, reason, proposal_id, approved_by)
+values ('ORD-90005', 1000, 'late delivery gesture', gen_random_uuid(), 'seed');

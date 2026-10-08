@@ -160,10 +160,12 @@ class OfflineProvider:
         if order is None:
             body = t["notfound"] if order_ids else t["other"]
             needs_human = not order_ids
-        elif intent in ("refund_request", "damaged_item") and order["status"] in ("delivered", "returned"):
-            refund = {"order_id": order["id"], "amount_cents": order["total_cents"],
-                      "reason": intent.replace("_", " ")}
-            body = t["refund"].format(order=order["id"], amount=f"{order['total_cents'] / 100:.2f}")
+        elif (intent in ("refund_request", "damaged_item") and order["status"] in ("delivered", "returned")
+              and order["total_cents"] > int(order.get("refunded_cents") or 0)):
+            # Only what is left: earlier refunds on the order count against the total.
+            left = order["total_cents"] - int(order.get("refunded_cents") or 0)
+            refund = {"order_id": order["id"], "amount_cents": left, "reason": intent.replace("_", " ")}
+            body = t["refund"].format(order=order["id"], amount=f"{left / 100:.2f}")
         elif intent == "return_request":
             body = t["return"].format(order=order["id"])
         elif intent == "cancellation":

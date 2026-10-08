@@ -19,8 +19,8 @@ from .tracing import now_iso, tracer
 
 
 class RunRecorder:
-    def __init__(self, conn: Connection, *, agent_id: str, ticket_id: str, job_id: int | None,
-                 trace_id: str):
+    def __init__(self, conn: Connection, *, agent_id: str, ticket_id: str | None, job_id: int | None,
+                 trace_id: str, eval_run_id: str | None = None):
         self.conn = conn
         self.agent_id = agent_id
         self.trace_id = trace_id
@@ -33,9 +33,9 @@ class RunRecorder:
         self.started = time.monotonic()
         t = tracer()
         row = conn.execute(
-            """insert into runs (ticket_id, job_id, agent_id, trace_id, trace_url)
-               values (%s, %s, %s, %s, %s) returning id""",
-            (ticket_id, job_id, agent_id, trace_id, t.trace_url(trace_id)),
+            """insert into runs (ticket_id, job_id, agent_id, trace_id, trace_url, eval_run_id)
+               values (%s, %s, %s, %s, %s, %s) returning id""",
+            (ticket_id, job_id, agent_id, trace_id, t.trace_url(trace_id), eval_run_id),
         ).fetchone()
         self.run_id = str(row["id"])
 

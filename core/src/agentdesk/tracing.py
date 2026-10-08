@@ -67,6 +67,36 @@ class Tracer:
     def span(self, trace_id: str, **body: Any) -> None:
         self._emit("span-create", {"id": uuid.uuid4().hex, "traceId": trace_id, **body})
 
+    def score(self, trace_id: str, name: str, value: float, comment: str | None = None) -> None:
+        self._emit("score-create", {"id": uuid.uuid4().hex, "traceId": trace_id, "name": name,
+                                    "value": value, "dataType": "NUMERIC", "comment": comment})
+
+    # Datasets are synchronous calls, used once per eval run, never on the hot path.
+    def _post(self, path: str, body: dict) -> None:
+        if not self.enabled:
+            return
+        try:
+            res = self._client.post(path, json=body)
+            if res.status_code >= 400:
+                log.warning("langfuse %s HTTP %s: %s", path, res.status_code, res.text[:200])
+        except httpx.HTTPError as exc:
+            log.warning("langfuse %s failed: %s", path, exc)
+
+    def ensure_dataset(self, name: str, description: str) -> None:
+        self._post("/api/public/v2/datasets", {"name": name, "description": description})
+
+    def upsert_dataset_item(self, dataset: str, item_id: str, *, input: dict, expected: dict,
+                            metadata: dict) -> None:
+        self._post("/api/public/dataset-items", {
+            "datasetName": dataset, "id": f"{dataset}:{item_id}", "input": input,
+            "expectedOutput": expected, "metadata": metadata,
+        })
+
+    def link_dataset_run(self, dataset: str, item_id: str, run_name: str, trace_id: str) -> None:
+        self._post("/api/public/dataset-run-items", {
+            "runName": run_name, "datasetItemId": f"{dataset}:{item_id}", "traceId": trace_id,
+        })
+
     def _emit(self, kind: str, body: dict) -> None:
         if not self.enabled:
             return
