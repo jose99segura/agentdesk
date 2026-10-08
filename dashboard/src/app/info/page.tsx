@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import ArchitectureDiagram from "@/components/ArchitectureDiagram";
+import Failures from "@/components/info/Failures";
+import N8nIntake from "@/components/info/N8nIntake";
+import Prompts from "@/components/info/Prompts";
 import { Card } from "@/components/ui";
 
 export const metadata: Metadata = { title: "How it works" };
@@ -56,17 +59,6 @@ const GOVERNANCE = [
   ["Human approval", "The only path that refunds or sends. Re-validates, locks the row, records who decided."],
 ];
 
-const RELIABILITY = [
-  ["Idempotent ingest", "Unique external id per inbound message; the same webhook twice is one ticket."],
-  ["Retries with backoff", "5s, 10s, 20s with jitter, four attempts, then the dead letter queue with a retry button."],
-  ["Leases", "A job held by a worker that died is reclaimed after five minutes."],
-  ["Provider fallback", "Each model call retries a transient error, then falls back: Mistral, then Claude, then the offline model."],
-  ["Circuit breakers", "Three failures open a provider's circuit for 30 seconds; one probe decides whether it closes again. State is live on the top bar."],
-  ["Atomic effects", "Steps are logged as they happen; changes are committed in one transaction, so a crash leaves a full log and no half-written state."],
-  ["Fault injection", "“Simulate outage” takes a provider down on demand, to watch all of the above happen."],
-  ["Interruption budget", "At most 20 Telegram cards an hour, then one digest. Alerts are deduplicated with a 30 minute cooldown."],
-];
-
 const STACK = [
   ["Core", "Python 3.12, FastAPI, psycopg 3, Pydantic"],
   ["Models", "Mistral and Anthropic over plain HTTP, one adapter each"],
@@ -105,6 +97,13 @@ export default function InfoPage() {
         </Card>
       </Section>
 
+      <Section
+        title="Channels: the n8n intake"
+        lead="Customers reach the platform through n8n, which owns the channel: webhooks, forms, retries towards the API and the alert when it cannot get through."
+      >
+        <N8nIntake />
+      </Section>
+
       <Section title="The life of a ticket" lead="What happens between “my order arrived broken” and a refund, and where it lives in the code.">
         <ol className="relative space-y-6 border-l border-line pl-8">
           {LIFECYCLE.map((s, i) => (
@@ -118,6 +117,15 @@ export default function InfoPage() {
             </li>
           ))}
         </ol>
+      </Section>
+
+      <Section
+        title="Prompts and tools"
+        lead="Exactly what each agent receives, served live by the core API from the code that runs: system prompt, the shape of the user message, and the JSON schema of every tool."
+      >
+        <Suspense fallback={<p className="text-sm text-faint">Loading the live prompts…</p>}>
+          <Prompts />
+        </Suspense>
       </Section>
 
       <Section
@@ -148,15 +156,11 @@ export default function InfoPage() {
         </div>
       </Section>
 
-      <Section title="When things go wrong" lead="Failures are expected and designed for. Try “simulate outage” on the top bar and watch the queue page.">
-        <div className="grid gap-3 sm:grid-cols-2">
-          {RELIABILITY.map(([title, body]) => (
-            <div key={title} className="rounded-xl border border-line bg-panel p-4">
-              <h3 className="text-sm font-medium">{title}</h3>
-              <p className="mt-1 text-sm leading-relaxed text-muted">{body}</p>
-            </div>
-          ))}
-        </div>
+      <Section
+        title="When things go wrong"
+        lead="Failures are expected and designed for, in the order a ticket meets them. Try “simulate outage” on the top bar, then watch Runs and Queue."
+      >
+        <Failures />
         <Card className="mt-4">
           <div className="p-5">
             <h3 className="text-sm font-medium">Circuit breaker, per provider</h3>

@@ -13,6 +13,9 @@ import random
 from psycopg import Connection
 
 LEASE_SECONDS = 300
+BASE_DELAY_S = 5.0
+# Matches the column default on jobs.max_attempts.
+MAX_ATTEMPTS = 4
 
 
 def enqueue(conn: Connection, kind: str, ticket_id: str, key: str, payload: dict | None = None):
@@ -50,7 +53,7 @@ def complete(conn: Connection, job_id: int) -> None:
 
 
 def retry_delay_s(attempts: int) -> float:
-    return min(300.0, 5.0 * 2 ** (attempts - 1)) * random.uniform(0.7, 1.3)
+    return min(300.0, BASE_DELAY_S * 2 ** (attempts - 1)) * random.uniform(0.7, 1.3)
 
 
 def fail(conn: Connection, job: dict, error: str, *, permanent: bool = False) -> str:

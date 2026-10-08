@@ -1,0 +1,139 @@
+{
+  "name": "agentdesk · ticket intake",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agentdesk/intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1f0c6a2-0001-4e1a-9a10-000000000001",
+      "name": "Inbound message",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "webhookId": "agentdesk-intake"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Accepts the shapes a form or a chat widget sends and produces the API's ticket.\nconst b = $input.first().json.body ?? {};\nconst email = String(b.email ?? b.customer_email ?? '').trim().toLowerCase();\nconst body = String(b.message ?? b.body ?? '').trim();\nif (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email) || !body) {\n  return [{ json: { valid: false, error: 'email and message are required' } }];\n}\nreturn [{\n  json: {\n    valid: true,\n    ticket: {\n      channel: b.channel === 'chat' ? 'chat' : 'form',\n      customer_email: email,\n      subject: b.subject ?? null,\n      body: body.slice(0, 10000),\n      // The sender's own id makes a redelivered message one ticket, not two.\n      external_id: b.id ? `n8n-${b.id}` : undefined,\n    },\n  },\n}];"
+      },
+      "id": "a1f0c6a2-0002-4e1a-9a10-000000000002",
+      "name": "Normalize and validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1f0c6a2-0003-4e1a-9a10-000000000003",
+      "name": "Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://agentdesk-api.senaproject.online/tickets",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.ticket) }}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "a1f0c6a2-0004-4e1a-9a10-000000000004",
+      "name": "Create ticket (agentdesk API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [740, 200],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ticket_id: $json.ticket_id, duplicate: $json.duplicate } }}",
+        "options": { "responseCode": 202 }
+      },
+      "id": "a1f0c6a2-0005-4e1a-9a10-000000000005",
+      "name": "Accepted (202)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1000, 100]
+    },
+    {
+      "parameters": {
+        "chatId": "232114558",
+        "text": "=🔴 agentdesk intake could not reach the API after 3 tries.\n{{ $json.error?.message ?? 'unknown error' }}",
+        "additionalFields": {}
+      },
+      "id": "a1f0c6a2-0006-4e1a-9a10-000000000006",
+      "name": "Alert on Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: 'temporarily unavailable, please retry' } }}",
+        "options": { "responseCode": 503 }
+      },
+      "id": "a1f0c6a2-0007-4e1a-9a10-000000000007",
+      "name": "Unavailable (503)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1240, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: $json.error } }}",
+        "options": { "responseCode": 400 }
+      },
+      "id": "a1f0c6a2-0008-4e1a-9a10-000000000008",
+      "name": "Rejected (400)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [740, 420]
+    }
+  ],
+  "connections": {
+    "Inbound message": { "main": [[{ "node": "Normalize and validate", "type": "main", "index": 0 }]] },
+    "Normalize and validate": { "main": [[{ "node": "Valid?", "type": "main", "index": 0 }]] },
+    "Valid?": {
+      "main": [
+        [{ "node": "Create ticket (agentdesk API)", "type": "main", "index": 0 }],
+        [{ "node": "Rejected (400)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Create ticket (agentdesk API)": {
+      "main": [
+        [{ "node": "Accepted (202)", "type": "main", "index": 0 }],
+        [{ "node": "Alert on Telegram", "type": "main", "index": 0 }]
+      ]
+    },
+    "Alert on Telegram": { "main": [[{ "node": "Unavailable (503)", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

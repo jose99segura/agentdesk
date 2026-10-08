@@ -47,6 +47,14 @@ def health() -> dict:
     return {"ok": True}
 
 
+@app.get("/meta")
+def meta() -> dict:
+    """Prompts, tool schemas and reliability settings, straight from the running code."""
+    from .meta import describe
+
+    return describe()
+
+
 @app.post("/tickets", dependencies=[Depends(require_token)])
 def create_ticket(t: TicketIn) -> dict:
     external_id = t.external_id or hashlib.sha256(
