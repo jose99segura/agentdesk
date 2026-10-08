@@ -31,6 +31,8 @@ generate() {
   else
     echo "kept existing $GEN"
   fi
+  # Added after the first run: secrets generated later join the same file.
+  grep -q "^VOICE_TOOL_SECRET=" "$GEN" || { echo "VOICE_TOOL_SECRET=$(rand)" >> "$GEN"; echo "added VOICE_TOOL_SECRET"; }
   {
     echo "-- agentdesk production bootstrap. Paste into Supabase > SQL Editor and run once."
     echo "-- Contains passwords: never commit, delete after use."
@@ -61,6 +63,9 @@ push() {
   put langfuse-public-key "$(val LANGFUSE_PUBLIC_KEY "$env")"
   put langfuse-secret-key "$(val LANGFUSE_SECRET_KEY "$env")"
   put telegram-bot-token "$(val TELEGRAM_BOT_TOKEN "$env")"
+  put elevenlabs-api-key "$(val ELEVENLABS_API_KEY "$env")"
+  put voice-tool-secret "$(val VOICE_TOOL_SECRET "$GEN")"
+  put elevenlabs-webhook-secret "$(val ELEVENLABS_WEBHOOK_SECRET "$env")"
 }
 
 case "${1:-}" in

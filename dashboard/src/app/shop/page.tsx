@@ -136,7 +136,7 @@ async function Shop({ searchParams }: { searchParams: Params }) {
         </section>
       </main>
 
-      {me && <SupportChat key={me.customer.email} customer={me.customer} orders={me.orders.map((o) => o.id)} />}
+      {me && <SupportChat key={me.customer.email} customer={me.customer} orders={me.orders.map((o) => o.id)} voice={!!catalog.voice} />}
     </div>
   );
 }

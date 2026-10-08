@@ -4,15 +4,18 @@
 locals {
   secret_env = {
     api = {
-      DATABASE_URL_API        = "database-url-api"
-      DATABASE_URL_AGENT      = "database-url-api" # the API never runs agents; keep it off the agent role
-      API_TOKEN               = "api-token"
-      MISTRAL_API_KEY         = "mistral-api-key"
-      ANTHROPIC_API_KEY       = "anthropic-api-key"
-      LANGFUSE_PUBLIC_KEY     = "langfuse-public-key"
-      LANGFUSE_SECRET_KEY     = "langfuse-secret-key"
-      TELEGRAM_BOT_TOKEN      = "telegram-bot-token"
-      TELEGRAM_WEBHOOK_SECRET = "telegram-webhook-secret"
+      DATABASE_URL_API          = "database-url-api"
+      DATABASE_URL_AGENT        = "database-url-api" # the API never runs agents; keep it off the agent role
+      API_TOKEN                 = "api-token"
+      MISTRAL_API_KEY           = "mistral-api-key"
+      ANTHROPIC_API_KEY         = "anthropic-api-key"
+      LANGFUSE_PUBLIC_KEY       = "langfuse-public-key"
+      LANGFUSE_SECRET_KEY       = "langfuse-secret-key"
+      TELEGRAM_BOT_TOKEN        = "telegram-bot-token"
+      TELEGRAM_WEBHOOK_SECRET   = "telegram-webhook-secret"
+      ELEVENLABS_API_KEY        = "elevenlabs-api-key"
+      VOICE_TOOL_SECRET         = "voice-tool-secret"
+      ELEVENLABS_WEBHOOK_SECRET = "elevenlabs-webhook-secret"
     }
     worker = {
       DATABASE_URL_AGENT  = "database-url-agent"
@@ -23,6 +26,13 @@ locals {
       LANGFUSE_SECRET_KEY = "langfuse-secret-key"
       TELEGRAM_BOT_TOKEN  = "telegram-bot-token"
     }
+  }
+  # Cloud Run refuses a secret with no version, so optional ones join once they have a value.
+  optional_secrets = {
+    "anthropic-api-key"         = var.with_anthropic
+    "elevenlabs-api-key"        = var.with_voice
+    "voice-tool-secret"         = var.with_voice
+    "elevenlabs-webhook-secret" = var.with_voice_webhook
   }
   common_env = {
     MODEL_CHAIN          = var.model_chain
@@ -57,9 +67,10 @@ resource "google_cloud_run_v2_service" "api" {
       }
       dynamic "env" {
         for_each = merge(local.common_env, {
-          WORKER_ID     = "api"
-          PUBSUB_TOPIC  = google_pubsub_topic.jobs.id
-          DASHBOARD_URL = "https://agentdesk-dashboard-${data.google_project.this.number}.${var.region}.run.app"
+          WORKER_ID           = "api"
+          PUBSUB_TOPIC        = google_pubsub_topic.jobs.id
+          DASHBOARD_URL       = "https://agentdesk-dashboard-${data.google_project.this.number}.${var.region}.run.app"
+          ELEVENLABS_AGENT_ID = var.elevenlabs_agent_id
         })
         content {
           name  = env.key
@@ -67,7 +78,7 @@ resource "google_cloud_run_v2_service" "api" {
         }
       }
       dynamic "env" {
-        for_each = { for k, v in local.secret_env.api : k => v if var.with_anthropic || v != "anthropic-api-key" }
+        for_each = { for k, v in local.secret_env.api : k => v if lookup(local.optional_secrets, v, true) }
         content {
           name = env.key
           value_source {
@@ -123,7 +134,7 @@ resource "google_cloud_run_v2_service" "worker" {
         }
       }
       dynamic "env" {
-        for_each = { for k, v in local.secret_env.worker : k => v if var.with_anthropic || v != "anthropic-api-key" }
+        for_each = { for k, v in local.secret_env.worker : k => v if lookup(local.optional_secrets, v, true) }
         content {
           name = env.key
           value_source {

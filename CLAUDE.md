@@ -46,6 +46,22 @@ ControlC code, data or credentials, ever.
 - **n8n workflows are generated**: edit `n8n/build.py`, run it, re-import. Never hand-edit the JSON.
 - Code, comments, UI and docs in English (international portfolio).
 
+## Voice channel (ElevenAgents)
+
+`voice.py` + `voice_setup.py`. The ElevenLabs agent and its two webhook tools are generated:
+edit `voice_setup.py` and run `uv run agentdesk voice-setup --api-url <public API>`, never edit
+them in the ElevenLabs UI. ElevenLabs must reach the API, so the agent points at production;
+locally the call bar only works against a tunnel.
+
+- The caller is bound by the API (`sign_caller`, keyed by `VOICE_TOOL_SECRET`), passed as the
+  `caller` dynamic variable and checked on every tool call. Never let a tool take the customer
+  from a model argument.
+- Tools: `X-Agentdesk-Voice` header = `VOICE_TOOL_SECRET`. Post-call webhook: `elevenlabs-signature`
+  (`t=<ts>,v0=<hmac(ts.body)>`) with `ELEVENLABS_WEBHOOK_SECRET`, which ElevenLabs generates when the
+  workspace webhook is created.
+- Terraform: `with_voice` (API key + tool secret pushed), `with_voice_webhook`,
+  `elevenlabs_agent_id` (in `terraform.tfvars`).
+
 ## Production database
 
 Supabase project `cinyqwetgzjgfcgzinxo` on the **personal** account (never the TS Lux / Control C

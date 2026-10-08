@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import type { ShopCustomer } from "@/lib/shop";
 import { sendToSupport, ticketStatus, type TicketView } from "./actions";
+import VoiceCall from "./VoiceCall";
 
 // The store's support widget. A message becomes a ticket (through n8n in production), and
 // the widget then follows that ticket: what the agents are doing, that a person is reviewing
@@ -11,7 +12,7 @@ import { sendToSupport, ticketStatus, type TicketView } from "./actions";
 
 type Turn =
   | { kind: "me"; text: string; order: string | null; at: number }
-  | { kind: "ticket"; ticketId: string; via: "n8n" | "api"; view: TicketView | null; at: number }
+  | { kind: "ticket"; ticketId: string; via: "n8n" | "api" | "voice"; view: TicketView | null; at: number }
   | { kind: "error"; text: string; at: number };
 
 const SUGGESTIONS = [
@@ -41,7 +42,7 @@ function save(email: string, turns: Turn[]) {
 
 const settled = (v: TicketView | null) => !!v?.reply;
 
-export default function SupportChat({ customer, orders }: { customer: ShopCustomer; orders: string[] }) {
+export default function SupportChat({ customer, orders, voice }: { customer: ShopCustomer; orders: string[]; voice: boolean }) {
   const [open, setOpen] = useState(false);
   // Nothing of the conversation renders until the widget is opened, so reading storage
   // here cannot make the hydrated markup differ from the server's.
@@ -151,6 +152,17 @@ export default function SupportChat({ customer, orders }: { customer: ShopCustom
             </div>
           </div>
 
+          {voice && <VoiceCall
+            email={customer.email}
+            onTickets={(ids) =>
+              update((t) => {
+                const known = new Set(t.flatMap((x) => (x.kind === "ticket" ? [x.ticketId] : [])));
+                const fresh = ids.filter((id) => !known.has(id));
+                return [...t, ...fresh.map((id) => ({ kind: "ticket" as const, ticketId: id, via: "voice" as const, view: null, at: Date.now() }))];
+              })
+            }
+          />}
+
           <div ref={box} className="flex min-h-[260px] flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
             <Bubble side="them">
               Hi {customer.name.split(" ")[0]}! Ask us anything about your orders. Pick the order below so we can find it faster.
@@ -239,10 +251,13 @@ function Bubble({ side, children }: { side: "me" | "them"; children: React.React
 const money = (cents: number) => `€${(cents / 100).toFixed(2)}`;
 
 // What the customer is shown while the ticket moves: the real state, in plain words.
-function steps(v: TicketView | null, via: "n8n" | "api") {
+function steps(v: TicketView | null, via: "n8n" | "api" | "voice") {
   const working = !v || v.job?.status === "queued" || v.job?.status === "running";
   return [
-    { label: via === "n8n" ? "Received through our n8n intake" : "Received", done: true },
+    {
+      label: via === "n8n" ? "Received through our n8n intake" : via === "voice" ? "Filed during your call" : "Received",
+      done: true,
+    },
     {
       label: v?.job?.status === "dead" ? "Our system hit a problem; a person will pick this up" :
         v?.agents.length ? `Agents on it: ${v.agents.join(", ")}` : "Agents are reading your message",

@@ -17,6 +17,8 @@ def main() -> None:
     sim = sub.add_parser("simulate", help="send synthetic customer tickets")
     sim.add_argument("--per-minute", type=float, default=6.0)
     sim.add_argument("--count", type=int, default=None)
+    vs = sub.add_parser("voice-setup", help="create or update the ElevenLabs voice agent and its tools")
+    vs.add_argument("--api-url", required=True, help="public API URL ElevenLabs will call")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -32,6 +34,10 @@ def main() -> None:
         from .telegram import main as telegram_main
 
         telegram_main()
+    elif args.command == "voice-setup":
+        from .voice_setup import setup
+
+        setup(args.api_url)
     elif args.command == "eval":
         from .evals.runner import print_report, run_suite
 

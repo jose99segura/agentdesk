@@ -8,6 +8,7 @@ from its server, never from the browser. Everything they return is the demo stor
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from .config import settings
 from .db import api_pool
 
 router = APIRouter(prefix="/shop")
@@ -38,7 +39,9 @@ def catalog() -> dict:
                where c.email = any(%s) group by c.id order by array_position(%s, c.email)""",
             (FEATURED, FEATURED),
         ).fetchall()
-    return {"products": products, "customers": customers}
+    cfg = settings()
+    return {"products": products, "customers": customers,
+            "voice": bool(cfg.elevenlabs_api_key and cfg.elevenlabs_agent_id and cfg.voice_tool_secret)}
 
 
 @router.get("/customers/{email}")
@@ -57,6 +60,20 @@ def customer(email: str) -> dict:
             (c["id"],),
         ).fetchall()
     return {"customer": {k: c[k] for k in ("name", "email", "language")}, "orders": orders}
+
+
+@router.get("/customers/{email}/tickets")
+def recent_tickets(email: str, channel: str = "voice", minutes: int = 15) -> dict:
+    """Tickets a customer opened lately on one channel: how the store finds a call's ticket."""
+    with api_pool().connection() as conn:
+        rows = conn.execute(
+            """select id::text, created_at from tickets
+               where customer_email = %s and channel = %s
+                 and created_at > now() - make_interval(mins => %s)
+               order by created_at desc limit 5""",
+            (email.lower(), channel, max(1, min(minutes, 120))),
+        ).fetchall()
+    return {"tickets": [r["id"] for r in rows]}
 
 
 @router.get("/tickets/{ticket_id}")

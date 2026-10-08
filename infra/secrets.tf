@@ -13,6 +13,10 @@ locals {
     langfuse-secret-key     = ["worker", "api"]
     telegram-bot-token      = ["worker", "api"]
     telegram-webhook-secret = ["api"]
+    # Voice channel (ElevenAgents): only the API talks to ElevenLabs.
+    elevenlabs-api-key        = ["api"]
+    voice-tool-secret         = ["api"]
+    elevenlabs-webhook-secret = ["api"]
   }
   accounts = {
     api       = google_service_account.api.email

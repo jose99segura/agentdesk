@@ -97,3 +97,38 @@ export async function ticketStatus(ticketId: string, email: string): Promise<Tic
     return null;
   }
 }
+
+export type VoiceSession =
+  | { ok: true; token: string; variables: Record<string, string> }
+  | { ok: false; error: string };
+
+// A phone call: the API mints the ElevenLabs conversation token and signs who is calling.
+export async function startVoiceSession(email: string): Promise<VoiceSession> {
+  if (process.env.SHOP_ENABLED === "false") return { ok: false, error: "The demo shop is closed right now." };
+  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+  if (!allowed(`voice:${ip}`)) return { ok: false, error: "Too many calls from here. Try again in a few minutes." };
+  try {
+    const res = await fetch(`${CORE}/voice/session?email=${encodeURIComponent(email)}`, {
+      headers: { authorization: `Bearer ${TOKEN}` },
+      cache: "no-store",
+    });
+    if (res.status === 503) return { ok: false, error: "Phone support is not set up yet." };
+    if (!res.ok) return { ok: false, error: `Phone support is unavailable (${res.status}).` };
+    const data = await res.json();
+    return { ok: true, token: data.conversation_token, variables: data.dynamic_variables };
+  } catch {
+    return { ok: false, error: "Phone support is unreachable right now." };
+  }
+}
+
+export async function recentVoiceTickets(email: string): Promise<string[]> {
+  try {
+    const res = await fetch(`${CORE}/shop/customers/${encodeURIComponent(email)}/tickets?channel=voice&minutes=15`, {
+      headers: { authorization: `Bearer ${TOKEN}` },
+      cache: "no-store",
+    });
+    return res.ok ? ((await res.json()).tickets as string[]) : [];
+  } catch {
+    return [];
+  }
+}

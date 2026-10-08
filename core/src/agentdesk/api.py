@@ -195,6 +195,10 @@ from . import shop  # noqa: E402  (registered after require_token exists)
 
 shop.include(app, require_token)
 
+from . import voice  # noqa: E402
+
+voice.include(app, require_token)
+
 
 @app.post("/telegram/webhook")
 def telegram_webhook(update: dict, x_telegram_bot_api_secret_token: str = Header(default="")) -> dict:

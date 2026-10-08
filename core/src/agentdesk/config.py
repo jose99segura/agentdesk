@@ -47,6 +47,14 @@ class Settings(BaseSettings):
     pubsub_topic: str | None = None
     dashboard_url: str = "http://localhost:3020"
 
+    # Voice channel (ElevenAgents). The agent and its tools are created by `agentdesk voice setup`.
+    elevenlabs_api_key: str | None = None
+    elevenlabs_agent_id: str | None = None
+    # Sent by ElevenLabs on every tool call (header X-Agentdesk-Voice); also keys the caller signature.
+    voice_tool_secret: str | None = None
+    # Signs ElevenLabs' post-call webhook.
+    elevenlabs_webhook_secret: str | None = None
+
     worker_id: str = "worker-1"
     worker_concurrency: int = 3
 

@@ -132,7 +132,7 @@ traffic generator, a daily report and an error handler. They need two credential
 - [x] n8n workflows: intake webhook, contact form, traffic generator, daily report, error handler
 - [ ] MCP server over runs, audit log and evals
 - [ ] GCP: Cloud Run, Pub/Sub, BigQuery run warehouse, Terraform
-- [ ] Voice channel with ElevenLabs Agents
+- [x] Voice channel with ElevenLabs Agents: order lookups and ticket filing, caller signed by the API
 - [ ] n8n community node and templates
 - [ ] Small LoRA fine-tune of an open Mistral model for triage, compared on accuracy and cost
 - [ ] ROI ledger: work absorbed per agent per month

@@ -58,3 +58,21 @@ variable "shop_intake_url" {
   type        = string
   default     = "https://n8n.senaproject.online/webhook/agentdesk/intake"
 }
+
+variable "with_voice" {
+  description = "Set true once elevenlabs-api-key and voice-tool-secret have values."
+  type        = bool
+  default     = false
+}
+
+variable "with_voice_webhook" {
+  description = "Set true once elevenlabs-webhook-secret has a value (from ElevenLabs' webhook settings)."
+  type        = bool
+  default     = false
+}
+
+variable "elevenlabs_agent_id" {
+  description = "The voice agent created by `agentdesk voice-setup`; empty keeps phone support off."
+  type        = string
+  default     = ""
+}

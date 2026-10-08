@@ -29,7 +29,7 @@ async function get<T>(path: string): Promise<T | null> {
 }
 
 export function loadCatalog() {
-  return get<{ products: Product[]; customers: ShopCustomer[] }>("/shop/catalog");
+  return get<{ products: Product[]; customers: ShopCustomer[]; voice?: boolean }>("/shop/catalog");
 }
 
 export function loadCustomer(email: string) {

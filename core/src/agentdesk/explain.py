@@ -182,6 +182,21 @@ beyond that, proposals are bundled into one digest (an interruption budget). Ale
 letters, open circuits) are deduplicated: one message per 30 minutes per alert, with the count
 of repeats suppressed. It shares the bot with the cerebro project, which only sends.
 
+## Voice: phone support with ElevenAgents
+The demo store (/shop) has a "Call support" button. The call is an ElevenLabs voice agent
+(ElevenAgents) created from code by `agentdesk voice-setup` (`voice_setup.py`: prompt, two
+webhook tools). It can do two things: `order_status` reads the caller's orders, and
+`open_ticket` files a normal `voice` ticket that the same agents and the same human approval
+handle. It can never refund or cancel, and its prompt forbids saying it did.
+Who is calling is not the model's choice: the API mints the conversation token and signs the
+customer's email into a short-lived `caller` value; every tool call carries it back and a
+forged or expired one is refused (403). The tools sit behind their own secret header, separate
+from the API token, and run on the read-only `desk_agent` role. Each tool call is a span on a
+Langfuse trace named after the conversation; ElevenLabs' post-call webhook (HMAC-signed) adds
+the transcript, the summary and a call_successful score to that trace and to the audit log.
+When the call ends, the ticket it filed shows up in the store's chat and is followed like any
+other until a person approves the reply.
+
 ## Stack and code map
 - Core: Python 3.12, FastAPI, psycopg 3, Pydantic; models over plain HTTP (Mistral, Anthropic),
   offline stand-in for keyless runs. Dashboard: Next.js 16, React 19, Tailwind 4, Supabase
@@ -202,10 +217,10 @@ api | worker | simulate | telegram`; `cd dashboard && pnpm dev --port 3020`; `uv
 
 ## Status and roadmap
 Done: queue, runtime, gateway, guards, approvals, live dashboard, fault injection, Telegram
-approvals, evaluation layer, n8n workflows, the explainer. Planned: dashboard login, MCP server
-over runs and evals, deployment on Google Cloud (Cloud Run, Pub/Sub, BigQuery, Terraform), a voice
-channel with ElevenLabs, an n8n community node, a small LoRA fine-tune of a Mistral model for
-triage, an ROI ledger.
+approvals, evaluation layer, n8n workflows, the explainer, deployment on Google Cloud (Cloud Run,
+Pub/Sub, Scheduler, Terraform), the demo store and its voice channel. Planned: dashboard login,
+MCP server over runs and evals, a BigQuery run warehouse, an n8n community node, a small LoRA
+fine-tune of a Mistral model for triage, an ROI ledger.
 
 ## How to explain it in an interview
 Thirty seconds: "I built a platform where AI agents handle customer support but cannot act alone.
