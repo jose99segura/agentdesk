@@ -7,6 +7,8 @@ running code means the explanation can never drift from what the agents actually
 import inspect
 from dataclasses import fields
 
+import yaml
+
 from .agents.runner import (
     MAX_ROUNDS,
     RESOLVER_SYSTEM,
@@ -17,6 +19,8 @@ from .agents.runner import (
 )
 from .agents.schemas import Triage
 from .config import settings
+from .evals.judge import RUBRIC
+from .evals.runner import SUITE
 from .gateway import TOOLS
 from .guards import COMMITMENT_RE, INJECTION_RE, MAX_REPLY_CHARS
 from .jobs import BASE_DELAY_S, LEASE_SECONDS, MAX_ATTEMPTS
@@ -83,8 +87,19 @@ def describe() -> dict:
             "injection_pattern": INJECTION_RE.pattern,
             "max_reply_chars": MAX_REPLY_CHARS,
         },
+        "evals": _evals(),
         "telegram": {
             "cards_per_hour": cfg.telegram_cards_per_hour,
             "alert_cooldown_minutes": 30,
         },
+    }
+
+
+def _evals() -> dict:
+    suite = yaml.safe_load(SUITE.read_text(encoding="utf-8"))
+    return {
+        "gate": suite["gate"],
+        "judge_rubric": RUBRIC,
+        "cases": [{k: c[k] for k in ("id", "category", "description", "from", "body", "expect")}
+                  for c in suite["cases"]],
     }

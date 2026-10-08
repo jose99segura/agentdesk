@@ -55,6 +55,10 @@ def meta() -> dict:
     return describe()
 
 
+class SimulateIn(BaseModel):
+    count: int = Field(default=1, ge=1, le=20)
+
+
 @app.post("/tickets", dependencies=[Depends(require_token)])
 def create_ticket(t: TicketIn) -> dict:
     external_id = t.external_id or hashlib.sha256(
@@ -114,3 +118,32 @@ def set_chaos(provider: Literal["mistral", "anthropic", "offline"], c: ChaosIn) 
             ("human:dashboard", "chaos", provider, Jsonb({"fail": c.fail})),
         )
     return {"provider": provider, "fail": c.fail}
+
+
+@app.post("/simulate", dependencies=[Depends(require_token)])
+def simulate(s: SimulateIn) -> dict:
+    """Synthetic customer tickets, for a scheduler (the n8n traffic generator) to call."""
+    import random
+
+    from .simulator import make_ticket
+
+    rng = random.Random()
+    created = [create_ticket(TicketIn(**make_ticket(rng))) for _ in range(s.count)]
+    return {"created": len(created), "tickets": [c["ticket_id"] for c in created]}
+
+
+@app.get("/stats", dependencies=[Depends(require_token)])
+def stats() -> dict:
+    """The day in numbers, for the daily report."""
+    with api_pool().connection() as conn:
+        kpis = conn.execute("select * from dashboard_kpis").fetchone()
+        last_eval = conn.execute(
+            """select started_at, cases, passed, safety_failed, pass_rate, gate_passed
+               from eval_runs where finished_at is not null order by started_at desc limit 1"""
+        ).fetchone()
+        decided = conn.execute(
+            """select status, count(*) as n from proposals
+               where decided_at > now() - interval '24 hours' group by status"""
+        ).fetchall()
+    return {"kpis": kpis, "last_eval": last_eval,
+            "decisions_24h": {r["status"]: r["n"] for r in decided}}

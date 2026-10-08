@@ -1,0 +1,202 @@
+{
+  "name": "01 · intake webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 01 · intake webhook\nFor chat widgets and websites. `POST /webhook/agentdesk/intake` with `{ email, message, order?, channel?, id? }`.\n\nAnswers **202** with the ticket id (agents work asynchronously: queued, not resolved), **400** for invalid input and **503** when the platform cannot be reached.",
+        "width": 440,
+        "height": 220,
+        "color": 4
+      },
+      "id": "agentdesk-0011",
+      "name": "Note 11",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agentdesk/intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "agentdesk-0012",
+      "name": "Inbound message",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "agentdesk-intake"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "agentdesk-0013",
+      "name": "Body",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "{{SHARED_WORKFLOW_ID}}",
+          "mode": "id"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "agentdesk-0014",
+      "name": "Create ticket (00)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ok",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "agentdesk-0015",
+      "name": "Accepted?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ticket_id: $json.ticket_id, duplicate: $json.duplicate } }}",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "id": "agentdesk-0016",
+      "name": "202 Accepted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        900,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: $json.error } }}",
+        "options": {
+          "responseCode": "={{ $json.error?.includes('temporarily') ? 503 : 400 }}"
+        }
+      },
+      "id": "agentdesk-0017",
+      "name": "400 or 503",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        900,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Inbound message": {
+      "main": [
+        [
+          {
+            "node": "Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Body": {
+      "main": [
+        [
+          {
+            "node": "Create ticket (00)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create ticket (00)": {
+      "main": [
+        [
+          {
+            "node": "Accepted?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Accepted?": {
+      "main": [
+        [
+          {
+            "node": "202 Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "400 or 503",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "timezone": "Europe/Luxembourg",
+    "errorWorkflow": "{{ERROR_WORKFLOW_ID}}"
+  },
+  "pinData": {}
+}

@@ -1,0 +1,178 @@
+{
+  "name": "02 · contact form",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 02 · contact form\nA public contact form hosted by n8n itself: the simplest real channel into agentdesk. Open its **Production URL** once the workflow is active.\n\nThe customer sees a confirmation, or a clear retry message if the platform is down.",
+        "width": 420,
+        "height": 200,
+        "color": 4
+      },
+      "id": "agentdesk-0018",
+      "name": "Note 18",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "formTitle": "Contact the store",
+        "formDescription": "Questions about an order, a return or a refund. We usually answer within minutes.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Order number",
+              "placeholder": "ORD-10042"
+            },
+            {
+              "fieldLabel": "Message",
+              "fieldType": "textarea",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "buttonLabel": "Send"
+        }
+      },
+      "id": "agentdesk-0019",
+      "name": "Contact form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "agentdesk-contact-form"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e",
+              "name": "email",
+              "value": "={{ $json.Email }}",
+              "type": "string"
+            },
+            {
+              "id": "o",
+              "name": "order",
+              "value": "={{ $json['Order number'] }}",
+              "type": "string"
+            },
+            {
+              "id": "m",
+              "name": "message",
+              "value": "={{ $json.Message }}",
+              "type": "string"
+            },
+            {
+              "id": "c",
+              "name": "channel",
+              "value": "form",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "agentdesk-0020",
+      "name": "Map fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "{{SHARED_WORKFLOW_ID}}",
+          "mode": "id"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "agentdesk-0021",
+      "name": "Create ticket (00)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "={{ $json.ok ? 'Message received' : 'Something went wrong' }}",
+        "completionMessage": "={{ $json.ok ? 'Thanks! Our team is on it and will reply by email.' : $json.error }}",
+        "options": {}
+      },
+      "id": "agentdesk-0022",
+      "name": "Confirmation",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 1,
+      "position": [
+        660,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Contact form": {
+      "main": [
+        [
+          {
+            "node": "Map fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map fields": {
+      "main": [
+        [
+          {
+            "node": "Create ticket (00)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create ticket (00)": {
+      "main": [
+        [
+          {
+            "node": "Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "timezone": "Europe/Luxembourg",
+    "errorWorkflow": "{{ERROR_WORKFLOW_ID}}"
+  },
+  "pinData": {}
+}

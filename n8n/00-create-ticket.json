@@ -1,0 +1,325 @@
+{
+  "name": "00 · create ticket (shared)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 00 · create ticket (shared)\nThe one place where a customer message becomes an agentdesk ticket. Called by **01 · intake webhook** and **02 · contact form**.\n\nInput: `email`, `message`, optional `order`, `subject`, `channel`, `id`.\nOutput: `{ ok, ticket_id, duplicate }` or `{ ok: false, error }`.",
+        "width": 420,
+        "height": 230,
+        "color": 4
+      },
+      "id": "agentdesk-0001",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Failure handling\n- Invalid input never reaches the API.\n- The API call retries **3 times, 2 s apart**.\n- After that the error output alerts on Telegram and returns `ok: false`, so the caller can tell the customer to retry.\n- The API itself is idempotent on `external_id`: a retry never creates a second ticket.",
+        "width": 380,
+        "height": 230,
+        "color": 3
+      },
+      "id": "agentdesk-0002",
+      "name": "Note 2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        700,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "agentdesk-0003",
+      "name": "When called",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One shape for every channel: email, order number and message in, an API ticket out.\nconst b = $input.first().json;\nconst email = String(b.email ?? b.customer_email ?? '').trim().toLowerCase();\nconst body = String(b.message ?? b.body ?? '').trim();\nconst order = String(b.order ?? '').trim().toUpperCase();\nif (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email) || body.length < 3) {\n  return [{ json: { valid: false, error: 'A valid email and a message are required.' } }];\n}\nreturn [{\n  json: {\n    valid: true,\n    ticket: {\n      channel: ['chat', 'form', 'email'].includes(b.channel) ? b.channel : 'form',\n      customer_email: email,\n      subject: order ? `Order ${order}` : (b.subject ?? null),\n      body: (order && !body.includes(order) ? `${body}\\n\\nOrder: ${order}` : body).slice(0, 10000),\n      // The sender's own message id: a redelivered message becomes one ticket, not two.\n      external_id: b.id ? `n8n-${b.id}` : undefined,\n    },\n  },\n}];"
+      },
+      "id": "agentdesk-0004",
+      "name": "Normalize and validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "valid",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "agentdesk-0005",
+      "name": "Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://agentdesk-api.senaproject.online/tickets",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.ticket) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "agentdesk-0006",
+      "name": "Create ticket",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        220
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "",
+          "name": "agentdesk API (Bearer)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ok",
+              "name": "ok",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "tid",
+              "name": "ticket_id",
+              "value": "={{ $json.ticket_id }}",
+              "type": "string"
+            },
+            {
+              "id": "dup",
+              "name": "duplicate",
+              "value": "={{ $json.duplicate }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "agentdesk-0007",
+      "name": "Created",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        920,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "232114558",
+        "text": "=🔴 agentdesk intake could not reach the API after 3 tries.\n{{ $json.error?.message ?? 'unknown error' }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "agentdesk-0008",
+      "name": "Alert on Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        920,
+        320
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram · Gustavo Asistente"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ok",
+              "name": "ok",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "err",
+              "name": "error",
+              "value": "The service is temporarily unavailable. Please try again.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "agentdesk-0009",
+      "name": "Unavailable",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1140,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ok",
+              "name": "ok",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "err",
+              "name": "error",
+              "value": "={{ $json.error }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "agentdesk-0010",
+      "name": "Invalid",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        680,
+        440
+      ]
+    }
+  ],
+  "connections": {
+    "When called": {
+      "main": [
+        [
+          {
+            "node": "Normalize and validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize and validate": {
+      "main": [
+        [
+          {
+            "node": "Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid?": {
+      "main": [
+        [
+          {
+            "node": "Create ticket",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Invalid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create ticket": {
+      "main": [
+        [
+          {
+            "node": "Created",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert on Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert on Telegram": {
+      "main": [
+        [
+          {
+            "node": "Unavailable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "timezone": "Europe/Luxembourg",
+    "errorWorkflow": "{{ERROR_WORKFLOW_ID}}"
+  },
+  "pinData": {}
+}
