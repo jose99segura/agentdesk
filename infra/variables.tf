@@ -76,3 +76,9 @@ variable "elevenlabs_agent_id" {
   type        = string
   default     = ""
 }
+
+variable "dashboard_domain" {
+  description = "Custom hostname for the dashboard (CNAME to ghs.googlehosted.com); empty for none."
+  type        = string
+  default     = "agentdesk.senaproject.online"
+}

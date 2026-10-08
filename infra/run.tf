@@ -238,3 +238,17 @@ resource "google_cloud_run_v2_service_iam_member" "worker_invoker" {
   role     = "roles/run.invoker"
   member   = "serviceAccount:${google_service_account.invoker.email}"
 }
+
+# The dashboard on its own hostname: a CNAME to ghs.googlehosted.com at Hostinger, the domain
+# verified in Search Console by the same Google account; Google issues the certificate.
+resource "google_cloud_run_domain_mapping" "dashboard" {
+  count    = local.deployed && var.dashboard_domain != "" ? 1 : 0
+  location = var.region
+  name     = var.dashboard_domain
+  metadata {
+    namespace = var.project_id
+  }
+  spec {
+    route_name = google_cloud_run_v2_service.dashboard[0].name
+  }
+}
