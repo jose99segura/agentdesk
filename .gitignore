@@ -8,3 +8,10 @@ __pycache__/
 supabase/.temp/
 supabase/.branches/
 .claude/settings.local.json
+
+# Terraform and production secrets
+infra/.terraform/
+infra/.terraform.lock.hcl
+infra/*.tfstate*
+infra/terraform.tfvars
+infra/.secrets/

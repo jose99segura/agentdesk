@@ -120,6 +120,19 @@ class Worker:
             self.wake.wait(timeout=1.0)
             self.wake.clear()
 
+    def drain(self, worker_id: str, budget_s: float) -> int:
+        """Process due jobs until there are none or the time budget is spent (request mode)."""
+        deadline = time.monotonic() + budget_s
+        done = 0
+        while time.monotonic() < deadline:
+            with agent_pool().connection() as conn:
+                job = jobs.claim(conn, worker_id)
+                if not job:
+                    break
+                self._handle(conn, job)
+                done += 1
+        return done
+
     def _handle(self, conn, job: dict) -> None:
         started = time.monotonic()
         try:

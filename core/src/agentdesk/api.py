@@ -13,6 +13,7 @@ from . import jobs
 from .approvals import DecisionError, decide
 from .config import settings
 from .db import agent_pool, api_pool
+from .pubsub import wake_workers
 
 app = FastAPI(title="agentdesk", version="0.1.0")
 
@@ -77,6 +78,8 @@ def create_ticket(t: TicketIn) -> dict:
                                     (external_id,)).fetchone()
             return {"ticket_id": str(existing["id"]), "duplicate": True}
         jobs.enqueue(conn, "process_ticket", row["id"], f"process_ticket:{row['id']}")
+    # After the commit, so a worker woken by the message always finds the job.
+    wake_workers(str(row["id"]))
     return {"ticket_id": str(row["id"]), "duplicate": False}
 
 
@@ -103,6 +106,7 @@ def retry_job(job_id: int) -> dict:
             "insert into audit_log (actor, action, subject) values ('human:dashboard', 'retry_dead', %s)",
             (str(job_id),),
         )
+    wake_workers(f"retry:{job_id}")
     return {"ok": True}
 
 
@@ -185,3 +189,24 @@ def stats() -> dict:
         ).fetchall()
     return {"kpis": kpis, "last_eval": last_eval,
             "decisions_24h": {r["status"]: r["n"] for r in decided}}
+
+
+@app.post("/telegram/webhook")
+def telegram_webhook(update: dict, x_telegram_bot_api_secret_token: str = Header(default="")) -> dict:
+    """Button presses from Telegram, in production (locally the service long-polls instead).
+
+    Telegram sends the secret registered with setWebhook in a header; anything without it
+    is refused. The callback itself is checked against the configured chat, as in polling.
+    """
+    cfg = settings()
+    secret = cfg.telegram_webhook_secret or ""
+    if not secret or not hmac.compare_digest(x_telegram_bot_api_secret_token.encode(), secret.encode()):
+        raise HTTPException(status_code=401, detail="invalid secret")
+    if cb := update.get("callback_query"):
+        from .telegram import Bot, TelegramService
+
+        service = TelegramService(Bot(cfg.telegram_bot_token), cfg.telegram_chat_id,
+                                  cfg.telegram_cards_per_hour, cfg.dashboard_url)
+        with api_pool().connection() as conn:
+            service.handle_callback(conn, cb)
+    return {"ok": True}

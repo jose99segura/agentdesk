@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     telegram_bot_token: str | None = None
     telegram_chat_id: str | None = None
     telegram_cards_per_hour: int = 20
+    # Production only: Telegram calls POST /telegram/webhook with this secret in a header.
+    telegram_webhook_secret: str | None = None
+    # Production only: "projects/<p>/topics/<t>"; the API publishes a wake-up per new ticket.
+    pubsub_topic: str | None = None
     dashboard_url: str = "http://localhost:3020"
 
     worker_id: str = "worker-1"
