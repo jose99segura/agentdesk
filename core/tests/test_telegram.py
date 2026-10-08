@@ -1,5 +1,7 @@
 """Telegram service against the local database with a fake bot; every test rolls back."""
 
+import json
+
 import psycopg
 import pytest
 from psycopg.rows import dict_row
@@ -51,8 +53,8 @@ def make_proposal(conn, kind="send_reply"):
     run = conn.execute("select id from runs limit 1").fetchone()
     if run is None:
         pytest.skip("needs at least one run in the local database (start the simulator once)")
-    payload = ('{"body": "Hi, sorry about that."}' if kind == "send_reply" else
-               f'{{"order_id": "{order["id"]}", "amount_cents": {order["total_cents"]}, "reason": "damaged"}}')
+    refund = {"order_id": order["id"], "amount_cents": order["total_cents"], "reason": "damaged"}
+    payload = json.dumps({"body": "Hi, sorry about that."} if kind == "send_reply" else refund)
     return conn.execute(
         """insert into proposals (ticket_id, run_id, kind, tier, payload)
            values (%s, %s, %s, %s, %s::jsonb) returning id""",
@@ -60,8 +62,8 @@ def make_proposal(conn, kind="send_reply"):
     ).fetchone()["id"]
 
 
-def service(bot, cards_per_hour=20):
-    return TelegramService(bot, "42", cards_per_hour, "http://localhost:3020")
+def service(bot, cards_per_hour=20, interactive=True):
+    return TelegramService(bot, "42", cards_per_hour, "http://localhost:3020", interactive)
 
 
 def test_pending_proposal_becomes_one_card_with_buttons(conn):
@@ -118,3 +120,12 @@ def test_repeated_alert_is_sent_once_and_counts_suppressions(conn):
     assert len(bot.sent()) == 1
     row = conn.execute("select suppressed from alerts where key = 'test:alert'").fetchone()
     assert row["suppressed"] == 2
+
+
+def test_send_only_mode_has_no_buttons_and_links_the_dashboard(conn):
+    conn.execute("update proposals set notified_at = now() where notified_at is null")
+    make_proposal(conn)
+    bot = FakeBot()
+    service(bot, interactive=False).announce(conn)
+    card = bot.sent()[0]
+    assert "reply_markup" not in card and "localhost:3020" in card["text"]

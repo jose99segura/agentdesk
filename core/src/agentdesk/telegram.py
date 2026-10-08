@@ -9,6 +9,8 @@
   number of suppressed repeats is reported when the alert is sent again.
 - A proposal is marked notified only after Telegram accepted the message, so a failed send
   is retried on the next pass instead of being lost.
+- If the bot already has a webhook (another app owns its updates), the service runs send-only:
+  cards carry no buttons and point to the dashboard, and the webhook is never touched.
 """
 
 import html
@@ -74,8 +76,10 @@ def buttons(proposal_id: str) -> dict:
 
 
 class TelegramService:
-    def __init__(self, bot: Bot, chat_id: str, cards_per_hour: int, dashboard_url: str):
+    def __init__(self, bot: Bot, chat_id: str, cards_per_hour: int, dashboard_url: str,
+                 interactive: bool = True):
         self.bot = bot
+        self.interactive = interactive
         self.chat_id = chat_id
         self.cards_per_hour = cards_per_hour
         self.dashboard_url = dashboard_url
@@ -100,9 +104,13 @@ class TelegramService:
             self._digest(conn)
 
     def _send_card(self, conn: Connection, p: dict) -> None:
+        params: dict = {"chat_id": self.chat_id, "parse_mode": "HTML", "text": proposal_card(p)}
+        if self.interactive:
+            params["reply_markup"] = buttons(str(p["id"]))
+        else:
+            params["text"] += f"\n\nReview on the dashboard: {_e(self.dashboard_url)}"
         try:
-            msg = self.bot.call("sendMessage", chat_id=self.chat_id, text=proposal_card(p),
-                                parse_mode="HTML", reply_markup=buttons(str(p["id"])))
+            msg = self.bot.call("sendMessage", **params)
         except TelegramError as exc:
             self._log(conn, "card", str(p["id"]), ok=False, error=str(exc))
             return
@@ -244,10 +252,16 @@ def main() -> None:
     cfg = settings()
     if not (cfg.telegram_bot_token and cfg.telegram_chat_id):
         raise SystemExit("TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are required")
-    service = TelegramService(Bot(cfg.telegram_bot_token), cfg.telegram_chat_id,
-                              cfg.telegram_cards_per_hour, cfg.dashboard_url)
-    threading.Thread(target=service.poll_updates, daemon=True, name="updates").start()
-    log.info("telegram service started for chat %s", cfg.telegram_chat_id)
+    bot = Bot(cfg.telegram_bot_token)
+    webhook = bot.call("getWebhookInfo").get("url")
+    service = TelegramService(bot, cfg.telegram_chat_id, cfg.telegram_cards_per_hour,
+                              cfg.dashboard_url, interactive=not webhook)
+    if webhook:
+        log.warning("bot has a webhook owned by another app: send-only mode, approve on the dashboard")
+    else:
+        threading.Thread(target=service.poll_updates, daemon=True, name="updates").start()
+    log.info("telegram service started for chat %s (%s)", cfg.telegram_chat_id,
+             "interactive" if service.interactive else "send-only")
     try:
         service.outbox_loop()
     except KeyboardInterrupt:
