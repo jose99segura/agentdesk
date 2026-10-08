@@ -27,6 +27,9 @@ export default function Shell({ children }: { children: ReactNode }) {
     null,
   );
 
+  // The demo storefront is the customer's side: no control-room chrome around it.
+  if (pathname.startsWith("/shop")) return <>{children}</>;
+
   const active = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   return (
@@ -66,6 +69,9 @@ export default function Shell({ children }: { children: ReactNode }) {
             className={`rounded-md px-2 py-1.5 text-sm transition-colors ${active("/info") ? "bg-ink/[0.06] text-ink" : "text-muted hover:text-ink"}`}
           >
             How it works
+          </Link>
+          <Link href="/shop" className="rounded-md px-2 py-1.5 text-sm text-muted transition-colors hover:text-ink">
+            Try the demo store ↗
           </Link>
           <div className="flex items-center gap-2 px-2 text-xs text-faint">
             <Dot tone={connected ? "ok" : "default"} pulse={connected} />

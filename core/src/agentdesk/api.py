@@ -191,6 +191,11 @@ def stats() -> dict:
             "decisions_24h": {r["status"]: r["n"] for r in decided}}
 
 
+from . import shop  # noqa: E402  (registered after require_token exists)
+
+shop.include(app, require_token)
+
+
 @app.post("/telegram/webhook")
 def telegram_webhook(update: dict, x_telegram_bot_api_secret_token: str = Header(default="")) -> dict:
     """Button presses from Telegram, in production (locally the service long-polls instead).

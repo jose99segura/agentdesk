@@ -52,3 +52,9 @@ variable "with_anthropic" {
   type        = bool
   default     = false
 }
+
+variable "shop_intake_url" {
+  description = "n8n webhook the demo store's chat posts to; empty sends straight to the API."
+  type        = string
+  default     = "https://n8n.senaproject.online/webhook/agentdesk/intake"
+}

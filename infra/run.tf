@@ -177,6 +177,11 @@ resource "google_cloud_run_v2_service" "dashboard" {
         value = "false"
       }
       env {
+        # The demo store's chat enters through n8n, like a real website's would.
+        name  = "SHOP_INTAKE_URL"
+        value = var.shop_intake_url
+      }
+      env {
         name = "CORE_API_TOKEN"
         value_source {
           secret_key_ref {

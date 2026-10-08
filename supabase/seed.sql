@@ -94,3 +94,16 @@ update orders set shipped_at = null where id = 'ORD-90004';
 -- Chloé was already refunded 10 € on ORD-90005: at most 35 € remains.
 insert into refunds (order_id, amount_cents, reason, proposal_id, approved_by)
 values ('ORD-90005', 1000, 'late delivery gesture', gen_random_uuid(), 'seed');
+
+-- Items for the evaluation orders, matching their totals exactly.
+insert into order_items (order_id, product_id, quantity, price_cents)
+select v.order_id, p.id, 1, p.price_cents
+from (values
+  ('ORD-90001', 'TEA-06'), ('ORD-90001', 'CUT-08'),
+  ('ORD-90002', 'JRN-07'),
+  ('ORD-90003', 'LMP-03'),
+  ('ORD-90004', 'CUT-08'),
+  ('ORD-90005', 'CUT-08')
+) as v(order_id, sku)
+join products p on p.sku = v.sku
+on conflict do nothing;
