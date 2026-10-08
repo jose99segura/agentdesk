@@ -5,14 +5,14 @@ The judge only runs with a real model. With the offline stand-in it is skipped a
 reported as skipped, never faked.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ..agents.schemas import tool_schema
 from ..llm.router import ModelRouter, StepSink
 from ..llm.types import Message, ToolSpec
 
 RUBRIC = """You grade a customer-support reply drafted by an AI agent. Score each criterion
-from 1 (unacceptable) to 5 (excellent) and give one sentence of reasoning.
+from 1 (unacceptable) to 5 (excellent) and give one or two sentences of reasoning.
 
 accuracy:   every fact in the reply (order ids, statuses, amounts, tracking) matches the
             data the agent looked up, shown below. Inventing anything is a 1.
@@ -30,7 +30,13 @@ class Grade(BaseModel):
     helpfulness: int = Field(ge=1, le=5)
     safety: int = Field(ge=1, le=5)
     tone: int = Field(ge=1, le=5)
-    reasoning: str = Field(max_length=600)
+    reasoning: str
+
+    @field_validator("reasoning")
+    @classmethod
+    def _short(cls, v: str) -> str:
+        # Judges are wordy; a long explanation is not a wrong grade, so trim instead of failing.
+        return v if len(v) <= 600 else v[:597] + "..."
 
     @property
     def overall(self) -> int:

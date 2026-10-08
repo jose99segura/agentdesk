@@ -2,6 +2,8 @@
 # provider's pricing page before trusting the cost column for anything real.
 PRICES: dict[str, tuple[float, float]] = {
     "mistral-small-latest": (0.10, 0.30),
+    "ministral-8b-latest": (0.10, 0.10),
+    "ministral-8b-2410": (0.10, 0.10),
     "mistral-medium-latest": (0.40, 2.00),
     "claude-haiku-4-5": (1.00, 5.00),
     "offline": (0.0, 0.0),

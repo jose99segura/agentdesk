@@ -77,3 +77,18 @@ def test_valid_refund_passes_and_promises_are_flagged(agent_conn, order):
     result = check_resolution(agent_conn, order["email"], r, {order["id"]: order})
     assert result.blocked == []
     assert "commitment_language" in result.flags
+
+
+def test_commitments_ignore_negations():
+    from agentdesk.guards import has_commitment
+
+    assert has_commitment("Your parcel will arrive tomorrow, guaranteed.")
+    assert has_commitment("Le colis arrivera demain.")
+    assert not has_commitment("Unfortunately, we cannot guarantee a specific delivery date.")
+    assert not has_commitment("We can't guarantee it will arrive by Friday.")
+
+
+def test_negation_with_a_typographic_apostrophe():
+    from agentdesk.guards import has_commitment
+
+    assert not has_commitment("While we can’t guarantee a specific delivery date, you can track it.")

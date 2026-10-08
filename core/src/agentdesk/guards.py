@@ -21,6 +21,11 @@ COMMITMENT_RE = re.compile(
     r"llegará (el|mañana|antes)|garanti\w*|arrivera (le|demain|avant))\b",
     re.IGNORECASE,
 )
+NEGATION_RE = re.compile(
+    r"\b(not|cannot|can['’]t|won['’]t|can not|unable to|no|never|ne|pas|no podemos|sin)\b[\w\s,'’]{0,25}$",
+    re.IGNORECASE,
+)
+URL_RE = re.compile(r"https?://|www\.", re.IGNORECASE)
 INJECTION_RE = re.compile(
     r"(ignore (all |the )?(previous|above) instructions|system prompt|you are now|"
     r"ignora (las|todas las) instrucciones|ignore[zr]? les instructions)",
@@ -33,6 +38,14 @@ MAX_REPLY_CHARS = 2000
 class GuardResult:
     blocked: list[str] = field(default_factory=list)
     flags: list[str] = field(default_factory=list)
+
+
+def has_commitment(text: str) -> bool:
+    """A promise of a date or outcome. "We cannot guarantee a date" is the opposite of one."""
+    for m in COMMITMENT_RE.finditer(text):
+        if not NEGATION_RE.search(text[max(0, m.start() - 30):m.start()]):
+            return True
+    return False
 
 
 def ticket_flags(body: str) -> list[str]:
@@ -51,8 +64,11 @@ def check_resolution(conn: Connection, sender: str, resolution: Resolution,
     if any(e.lower() != sender.lower() for e in EMAIL_RE.findall(reply)):
         result.blocked.append("foreign_email")
 
-    if COMMITMENT_RE.search(reply):
+    if has_commitment(reply):
         result.flags.append("commitment_language")
+    if URL_RE.search(reply):
+        # Agents have no tool that returns links: any URL in a reply was made up.
+        result.flags.append("link_in_reply")
     if len(reply) > MAX_REPLY_CHARS:
         result.flags.append("long_reply")
 
