@@ -8,6 +8,19 @@ The store and its customers are a demo with simulated traffic. The platform unde
 real: a durable queue, a model-agnostic runtime, a tool gateway with risk tiers, guards, human
 approval, tracing and a live control room.
 
+## Try it
+
+| | |
+|---|---|
+| **Demo store** | [agentdesk.senaproject.online/shop](https://agentdesk.senaproject.online/shop): pick a customer, look at their orders, write to support or press **Call support** to talk to the voice agent |
+| **Control room** | [agentdesk.senaproject.online](https://agentdesk.senaproject.online): runs, approvals, queue, agents, evals and audit log, live (read-only in public) |
+| **How it works** | [agentdesk.senaproject.online/info](https://agentdesk.senaproject.online/info): seven tabs of diagrams, prompts and worked paths, and a chat that answers questions about the system |
+
+A message in the store goes through n8n's intake webhook to the API, the agents look up the order
+and propose a reply (and a refund when it applies), and the owner approves it from Telegram; the
+approved reply then appears in the store's chat. It runs on Google Cloud (Cloud Run, Pub/Sub,
+Scheduler, Secret Manager, Terraform) with Supabase as the database.
+
 ## The two-minute demo
 
 1. A customer writes "my order arrived broken". The ticket lands in the queue.
@@ -120,8 +133,19 @@ CI runs it with `--gate` on every push.
 
 `n8n/build.py` authors the workflows as data and writes the JSON imported into n8n (folder
 `agentdesk`): a shared create-ticket sub-workflow, an intake webhook, a hosted contact form, a
-traffic generator, a daily report and an error handler. They need two credentials created in n8n,
-"agentdesk API (Bearer)" and "Telegram · Gustavo Asistente", and the API's public URL.
+traffic generator, a daily report and an error handler. They use two n8n credentials, "agentdesk
+API (Bearer)" and "Telegram · Gustavo Asistente", and are live on `n8n.senaproject.online`: the
+demo store's chat enters through the intake webhook. The traffic generator stays off unless a
+demo needs background traffic, since every simulated ticket is a paid model call.
+
+## Voice
+
+The store's **Call support** starts an ElevenLabs voice agent (ElevenAgents) generated from code by
+`uv run agentdesk voice-setup --api-url <API>`. It can read the caller's orders and file a ticket,
+never refund. The API signs who is calling into a short-lived `caller` value that every tool call
+must carry back, so neither the browser nor the model can pick another customer. Each call is a
+Langfuse trace, and the ticket it files is followed in the store's chat until a person approves the
+reply.
 
 ## Roadmap
 
@@ -131,7 +155,9 @@ traffic generator, a daily report and an error handler. They need two credential
 - [x] Evaluation layer: golden suite, judge rubric, safety cases, CI gate, Langfuse datasets
 - [x] n8n workflows: intake webhook, contact form, traffic generator, daily report, error handler
 - [ ] MCP server over runs, audit log and evals
-- [ ] GCP: Cloud Run, Pub/Sub, BigQuery run warehouse, Terraform
+- [x] GCP: Cloud Run, Pub/Sub, Scheduler, Secret Manager, Terraform, custom domain
+- [x] Demo store with a support chat (through n8n) and phone support
+- [ ] BigQuery run warehouse
 - [x] Voice channel with ElevenLabs Agents: order lookups and ticket filing, caller signed by the API
 - [ ] n8n community node and templates
 - [ ] Small LoRA fine-tune of an open Mistral model for triage, compared on accuracy and cost

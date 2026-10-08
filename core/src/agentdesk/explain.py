@@ -171,8 +171,8 @@ the agentdesk folder of the self-hosted instance ({N8N_FOLDER}), authored as dat
   backlog, last evaluation) and sends one Telegram message.
 - 99 · error handler: registered as the error workflow of all the others; sends the workflow, the
   failing node, the error and a link to the execution to Telegram.
-They need two credentials in n8n ("agentdesk API (Bearer)" and "Telegram · Gustavo Asistente") and
-the API's public URL; they are switched on once the API is deployed.
+They use two n8n credentials ("agentdesk API (Bearer)" and "Telegram · Gustavo Asistente") and are
+live; the demo store's chat enters through 01. The traffic generator stays off unless a demo needs it.
 
 ## Telegram
 `agentdesk telegram` turns each new proposal into a card with Approve / Reject buttons. A press
@@ -214,6 +214,15 @@ other until a person approves the reply.
 `npx supabase@2.120.0 start` (db :54322, API :54321, Studio :54323); `cd core && uv run agentdesk
 api | worker | simulate | telegram`; `cd dashboard && pnpm dev --port 3020`; `uv run pytest`;
 `uv run agentdesk eval --gate`. Without API keys the worker uses the offline model.
+
+## Where it runs
+Live at https://agentdesk.senaproject.online (store at /shop). Google Cloud, europe-west1: the API
+and the dashboard on Cloud Run (public), the worker on Cloud Run (private, woken by Pub/Sub on every
+new ticket and by Cloud Scheduler every minute to reclaim leases and send Telegram cards), secrets
+in Secret Manager, all declared in Terraform. Database on Supabase. Services scale to zero, so the
+first request after a quiet spell waits for a cold start; the startup probe checks the process, not
+the database, so a slow first connection does not get the instance killed, and n8n retries the API
+five times five seconds apart.
 
 ## Status and roadmap
 Done: queue, runtime, gateway, guards, approvals, live dashboard, fault injection, Telegram

@@ -86,8 +86,8 @@ export default function N8nWorkflows() {
       <p className="text-sm leading-relaxed text-muted">
         They are numbered in the order a reader should open them. Their source is{" "}
         <span className="font-mono text-ink">n8n/build.py</span>, which writes the JSON that is imported, so the workflows are
-        reviewed like code. They need two credentials created in n8n (the API bearer token and the Telegram bot) and are
-        switched on once the API has its public URL.
+        reviewed like code. They use two n8n credentials (the API bearer token and the Telegram bot) and are live: the
+        demo store&apos;s chat enters through the intake webhook. The traffic generator stays off unless a demo needs it.
       </p>
     </div>
   );

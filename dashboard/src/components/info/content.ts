@@ -98,5 +98,6 @@ export const STACK = [
   ["Approvals", "Dashboard and Telegram inline buttons"],
   ["Dashboard", "Next.js 16, React 19, Tailwind 4"],
   ["Quality", "pytest, ruff, golden-suite evaluation gate in GitHub Actions"],
-  ["Deployment", "Google Cloud: Cloud Run, Terraform (in progress)"],
+  ["Voice", "ElevenLabs Agents: order lookups and ticket filing, caller signed by the API"],
+  ["Deployment", "Google Cloud: Cloud Run, Pub/Sub, Scheduler, Secret Manager, Terraform"],
 ];

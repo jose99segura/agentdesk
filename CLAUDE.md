@@ -12,8 +12,8 @@ ControlC code, data or credentials, ever.
   dashboard.
 - **Supabase** (local via `npx supabase@2.120.0`, Postgres 17), not `postgres-shared`: Realtime
   powers the dashboard and the target company is Supabase.
-- **GCP** (Cloud Run, Pub/Sub, BigQuery, Terraform) is the planned deployment, not Coolify,
-  because the target roles ask for it. Not set up yet.
+- **GCP** (Cloud Run, Pub/Sub, Scheduler, Secret Manager, Terraform), not Coolify, because the
+  target roles ask for it. Live since 2026-10-08 (see below). n8n and Langfuse stay on Coolify.
 - No Drizzle: migrations are plain SQL in `supabase/migrations/`.
 
 ## Rules
@@ -87,7 +87,7 @@ Project `agentdesk-jose99` (billing on the personal account), region `europe-wes
 | Service | URL | Access |
 |---|---|---|
 | API | https://agentdesk-api-pzm2fnni7a-ew.a.run.app | public; bearer token on every route but /health, /meta and the Telegram webhook (secret header) |
-| Dashboard | https://agentdesk-dashboard-pzm2fnni7a-ew.a.run.app | public, read-only (`DASHBOARD_ACTIONS_ENABLED=false`: no login yet) |
+| Dashboard | https://agentdesk.senaproject.online (also https://agentdesk-dashboard-pzm2fnni7a-ew.a.run.app) | public, read-only (`DASHBOARD_ACTIONS_ENABLED=false`: no login yet); the demo store is `/shop` |
 | Worker | https://agentdesk-worker-pzm2fnni7a-ew.a.run.app | private: only the invoker service account (Pub/Sub push, Scheduler) |
 
 - **Deploy:** `bash infra/deploy.sh agentdesk-jose99` builds both images on Cloud Build (tagged
@@ -100,6 +100,18 @@ Project `agentdesk-jose99` (billing on the personal account), region `europe-wes
   never commit that file.
 - Telegram runs by **webhook** in production; the local `agentdesk telegram` therefore starts in
   send-only mode while the webhook is set.
+- **Custom domain:** `agentdesk.senaproject.online` is a CNAME to `ghs.googlehosted.com` at
+  Hostinger, verified in Search Console (TXT on `senaproject.online`), mapped by
+  `google_cloud_run_domain_mapping.dashboard`. Keep both google-site-verification TXT records:
+  the other one verifies something else. Telegram card links use this domain.
+- **Cold starts:** everything scales to zero and Python takes ~20 s to start. The startup probe
+  hits `/livez` (no database) with a two-minute budget and startup CPU boost; probing `/health`
+  killed instances in a loop. Callers must retry: n8n's create-ticket node does 5 x 5 s.
+- **n8n** (`n8n.senaproject.online`, folder `agentdesk`): 00, 01, 02, 04 and 99 are active, 03 (traffic
+  generator) is off on purpose. Credential ids are pinned in `build.py`. After changing a live
+  workflow through the API, re-activate it: n8n runs the published version, not the draft.
+- **Voice:** agent `agent_8201m4dxfndjea4s5n868qxxpzpw`. The post-call webhook secret is not set
+  yet (`with_voice_webhook = false`), so calls have tool spans in Langfuse but no transcript.
 - Verified on 2026-10-08: a ticket went API → Pub/Sub → worker → Mistral → proposals in 28 s
   (cold start), and the Scheduler sweep sent its Telegram cards a minute later.
 

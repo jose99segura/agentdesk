@@ -70,7 +70,7 @@ resource "google_cloud_run_v2_service" "api" {
         for_each = merge(local.common_env, {
           WORKER_ID           = "api"
           PUBSUB_TOPIC        = google_pubsub_topic.jobs.id
-          DASHBOARD_URL       = "https://agentdesk-dashboard-${data.google_project.this.number}.${var.region}.run.app"
+          DASHBOARD_URL       = (var.dashboard_domain != "" ? "https://${var.dashboard_domain}" : "https://agentdesk-dashboard-${data.google_project.this.number}.${var.region}.run.app")
           ELEVENLABS_AGENT_ID = var.elevenlabs_agent_id
         })
         content {
@@ -129,7 +129,7 @@ resource "google_cloud_run_v2_service" "worker" {
           APP_MODULE     = "agentdesk.cloud:app"
           WORKER_ID      = "cloud"
           DRAIN_BUDGET_S = "240"
-          DASHBOARD_URL  = "https://agentdesk-dashboard-${data.google_project.this.number}.${var.region}.run.app"
+          DASHBOARD_URL  = (var.dashboard_domain != "" ? "https://${var.dashboard_domain}" : "https://agentdesk-dashboard-${data.google_project.this.number}.${var.region}.run.app")
         })
         content {
           name  = env.key
