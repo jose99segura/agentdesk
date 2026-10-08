@@ -30,6 +30,7 @@ class Tracer:
         self.enabled = bool(cfg.langfuse_public_key and cfg.langfuse_secret_key)
         self.host = cfg.langfuse_host.rstrip("/")
         self.project_id = cfg.langfuse_project_id
+        self.environment = cfg.langfuse_environment
         self._queue: queue.Queue[dict] = queue.Queue(maxsize=10_000)
         if self.enabled:
             self._client = httpx.Client(
@@ -37,8 +38,20 @@ class Tracer:
                 auth=(cfg.langfuse_public_key, cfg.langfuse_secret_key),
                 timeout=10.0,
             )
+            if not self.project_id:
+                self._discover_project()
             threading.Thread(target=self._ship_forever, daemon=True, name="langfuse").start()
             atexit.register(self.flush)
+
+    def _discover_project(self) -> None:
+        try:
+            res = self._client.get("/api/public/projects", timeout=5)
+            res.raise_for_status()
+            projects = res.json().get("data") or []
+            if projects:
+                self.project_id = projects[0]["id"]
+        except (httpx.HTTPError, ValueError, KeyError) as exc:
+            log.warning("could not discover the Langfuse project id: %s", exc)
 
     def trace_url(self, trace_id: str) -> str | None:
         if not self.enabled or not self.project_id:
@@ -57,6 +70,7 @@ class Tracer:
     def _emit(self, kind: str, body: dict) -> None:
         if not self.enabled:
             return
+        body.setdefault("environment", self.environment)
         event = {"id": uuid.uuid4().hex, "timestamp": now_iso(), "type": kind, "body": body}
         try:
             self._queue.put_nowait(event)

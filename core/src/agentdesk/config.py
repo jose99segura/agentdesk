@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,8 +29,19 @@ class Settings(BaseSettings):
 
     langfuse_public_key: str | None = None
     langfuse_secret_key: str | None = None
-    langfuse_host: str = "https://cloud.langfuse.com"
+    langfuse_host: str = Field(
+        default="https://langfuse.senaproject.online",
+        validation_alias=AliasChoices("langfuse_host", "langfuse_base_url"),
+    )
+    # Found through the API when unset; only used to link runs to their trace.
     langfuse_project_id: str | None = None
+    # Separates these traces from other apps sharing the same Langfuse project.
+    langfuse_environment: str = "agentdesk-dev"
+
+    telegram_bot_token: str | None = None
+    telegram_chat_id: str | None = None
+    telegram_cards_per_hour: int = 20
+    dashboard_url: str = "http://localhost:3020"
 
     worker_id: str = "worker-1"
     worker_concurrency: int = 3

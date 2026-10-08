@@ -29,13 +29,18 @@ ControlC code, data or credentials, ever.
 - **Every model call goes through `ModelRouter`** (retry, fallback, breaker) and is recorded by
   `RunRecorder` (database + Langfuse). Tracing never blocks or breaks a run.
 - The `offline` provider is a labelled deterministic stand-in for keyless dev, tests and demos.
+- **Telegram** (`telegram.py`, `desk_api` role) decides through `approvals.decide()` like the
+  dashboard and only accepts callbacks from `TELEGRAM_CHAT_ID`. It shares cerebro's bot, which only
+  sends, so long polling here does not conflict; if cerebro ever sets a webhook, give agentdesk its
+  own bot.
+- Langfuse is the self-hosted one on Coolify; traces carry `environment=agentdesk-dev`.
 - Code, comments, UI and docs in English (international portfolio).
 
 ## Local dev
 
 ```bash
 npx supabase@2.120.0 start   # db :54322, API :54321, Studio :54323
-cd core && uv run agentdesk api | worker | simulate
+cd core && uv run agentdesk api | worker | simulate | telegram
 cd dashboard && pnpm dev --port 3020
 cd core && uv run pytest
 ```

@@ -9,6 +9,7 @@ def main() -> None:
     api.add_argument("--host", default="127.0.0.1")
     api.add_argument("--port", type=int, default=8000)
     sub.add_parser("worker", help="run the job worker")
+    sub.add_parser("telegram", help="run Telegram approvals and alerts")
     sim = sub.add_parser("simulate", help="send synthetic customer tickets")
     sim.add_argument("--per-minute", type=float, default=6.0)
     sim.add_argument("--count", type=int, default=None)
@@ -23,6 +24,10 @@ def main() -> None:
         from .worker import main as worker_main
 
         worker_main()
+    elif args.command == "telegram":
+        from .telegram import main as telegram_main
+
+        telegram_main()
     elif args.command == "simulate":
         from .simulator import run
 

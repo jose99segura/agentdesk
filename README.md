@@ -68,13 +68,24 @@ cd core && uv sync
 uv run agentdesk api                # http://127.0.0.1:8000
 uv run agentdesk worker
 uv run agentdesk simulate --per-minute 10
+uv run agentdesk telegram           # optional: approvals and alerts in Telegram
 cd ../dashboard && cp .env.example .env.local   # paste ANON_KEY from `npx supabase status`
 pnpm install && pnpm dev --port 3020            # http://localhost:3020
 ```
 
 Without API keys the worker uses the `offline` model, a deterministic rule-based stand-in so the
 whole pipeline runs anywhere. Set `MISTRAL_API_KEY` and/or `ANTHROPIC_API_KEY` in `core/.env` for
-real models, and the Langfuse keys for tracing.
+real models, the Langfuse keys for tracing (self-hosted at `langfuse.senaproject.online`, traces
+tagged with environment `agentdesk-dev`), and `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` for
+approvals from your phone.
+
+## Telegram
+
+`agentdesk telegram` turns each new proposal into a card with Approve / Reject buttons. A press
+goes through the same approval path as the dashboard (re-validated, audited); presses from any
+other chat are refused. At most `TELEGRAM_CARDS_PER_HOUR` cards are sent; beyond that, proposals
+are bundled into one digest. Alerts (dead letters, open circuits) are deduplicated: one message per
+30 minutes per alert, with the count of repeats suppressed.
 
 ```bash
 cd core && uv run pytest     # router, breaker, guards, and the database-role guarantees
@@ -83,7 +94,8 @@ cd core && uv run pytest     # router, breaker, guards, and the database-role gu
 ## Roadmap
 
 - [x] Phase 0: queue, runtime, gateway, guards, approvals, live dashboard, fault injection
-- [ ] Telegram approvals, deduplicated alerts, dashboard login
+- [x] Telegram approvals, interruption budget, deduplicated alerts
+- [ ] Dashboard login
 - [ ] Evaluation layer: golden suites, judge rubric, safety cases, CI gate that blocks regressions
 - [ ] MCP server over runs, audit log and evals
 - [ ] GCP: Cloud Run, Pub/Sub, BigQuery run warehouse, Terraform
