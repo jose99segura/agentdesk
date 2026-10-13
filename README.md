@@ -34,7 +34,9 @@ Scheduler, Secret Manager, Terraform) with Supabase as the database.
 
 ## The dashboard
 
-`Overview` (KPIs, throughput, what needs a decision), `Runs` (every run with its steps),
+`Overview` (KPIs, throughput, what needs a decision), `Trace` (one message end to end: intake,
+queue, each agent, every model and tool call, guards, proposals and the human decision, as a live
+timeline with where the time went), `Runs` (every run with its steps),
 `Approvals`, `Queue` (dead letters with retry), `Agents` (the registry and risk tiers), `Evals`,
 `Audit log`, and `/info`: a seven-tab guide to how the whole system works, with diagrams, worked
 examples and links to the n8n workflows and Langfuse. Light and dark themes. Everything updates

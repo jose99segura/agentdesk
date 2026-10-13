@@ -291,7 +291,12 @@ function TicketTurn({ turn }: { turn: Extract<Turn, { kind: "ticket" }> }) {
             </li>
           ))}
         </ol>
-        <div className="mt-1.5 font-mono text-[10px] text-faint">ticket {turn.ticketId.slice(0, 8)}</div>
+        <div className="mt-1.5 flex items-center gap-2 font-mono text-[10px] text-faint">
+          ticket {turn.ticketId.slice(0, 8)}
+          <a href={`/trace?id=${turn.ticketId}`} target="_blank" rel="noreferrer" className="font-sans text-info hover:underline">
+            See what happens behind the scenes ↗
+          </a>
+        </div>
       </div>
       {v?.reply && <Bubble side="them">{v.reply}</Bubble>}
     </>

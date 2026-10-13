@@ -11,6 +11,7 @@ import { useLive, useLiveQuery } from "./live";
 
 const NAV = [
   { href: "/", label: "Overview" },
+  { href: "/trace", label: "Trace" },
   { href: "/runs", label: "Runs" },
   { href: "/approvals", label: "Approvals", count: "pending_approvals" as const },
   { href: "/queue", label: "Queue", count: "dead_letters" as const },
