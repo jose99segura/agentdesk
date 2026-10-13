@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     pubsub_topic: str | None = None
     dashboard_url: str = "http://localhost:3020"
 
+    # Demo mode: a visitor of the demo store may approve or reject the proposals on their
+    # own store tickets, playing the store's reviewer. Off for anything that is not a demo.
+    demo_reviewer: bool = True
+
     # Voice channel (ElevenAgents). The agent and its tools are created by `agentdesk voice setup`.
     elevenlabs_api_key: str | None = None
     elevenlabs_agent_id: str | None = None

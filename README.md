@@ -17,8 +17,11 @@ approval, tracing and a live control room.
 | **How it works** | [agentdesk.senaproject.online/info](https://agentdesk.senaproject.online/info): seven tabs of diagrams, prompts and worked paths, and a chat that answers questions about the system |
 
 A message in the store goes through n8n's intake webhook to the API, the agents look up the order
-and propose a reply (and a refund when it applies), and the owner approves it from Telegram; the
-approved reply then appears in the store's chat. It runs on Google Cloud (Cloud Run, Pub/Sub,
+and propose a reply (and a refund when it applies), and a person approves it; the approved reply
+then appears in the store's chat. **Demo mode:** in the store you play that person yourself, with
+Approve and Reject on the proposals of your own messages (the same approval path as Telegram:
+re-validated and audited), and **Reset demo** undoes the refunds visitors approved. Every message
+links to its trace. It runs on Google Cloud (Cloud Run, Pub/Sub,
 Scheduler, Secret Manager, Terraform) with Supabase as the database.
 
 ## The two-minute demo

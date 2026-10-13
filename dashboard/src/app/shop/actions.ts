@@ -22,6 +22,16 @@ export type TicketView = {
   reply_status: string | null;
   refund: { status: string; amount_cents: number; order_id: string } | null;
   reply: string | null;
+  proposals: {
+    id: string;
+    kind: "send_reply" | "refund";
+    status: string;
+    flags: string[];
+    body: string | null;
+    order_id: string | null;
+    amount_cents: number | null;
+  }[];
+  reviewable: boolean;
 };
 
 const CORE = process.env.CORE_API_URL ?? "http://127.0.0.1:8000";
@@ -130,5 +140,40 @@ export async function recentVoiceTickets(email: string): Promise<string[]> {
     return res.ok ? ((await res.json()).tickets as string[]) : [];
   } catch {
     return [];
+  }
+}
+
+// Demo mode: the visitor plays the store's reviewer. The API checks the proposal is on one
+// of this customer's store tickets and runs the same approval path as Telegram.
+export async function decideAsReviewer(
+  proposalId: string,
+  email: string,
+  approve: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+  if (!allowed(`review:${ip}`)) return { ok: false, error: "Too many decisions from here. Try again in a few minutes." };
+  try {
+    const res = await fetch(`${CORE}/shop/proposals/${encodeURIComponent(proposalId)}/decision`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
+      body: JSON.stringify({ email, approve }),
+      cache: "no-store",
+    });
+    if (res.ok) return { ok: true };
+    const data = await res.json().catch(() => ({}));
+    return { ok: false, error: data.detail ?? `Could not record the decision (${res.status}).` };
+  } catch {
+    return { ok: false, error: "The platform is unreachable right now." };
+  }
+}
+
+export async function resetDemo(): Promise<{ ok: boolean; removed?: number }> {
+  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+  if (!allowed(`reset:${ip}`)) return { ok: false };
+  try {
+    const res = await fetch(`${CORE}/shop/reset`, { method: "POST", headers: { authorization: `Bearer ${TOKEN}` }, cache: "no-store" });
+    return res.ok ? { ok: true, removed: (await res.json()).refunds_removed } : { ok: false };
+  } catch {
+    return { ok: false };
   }
 }

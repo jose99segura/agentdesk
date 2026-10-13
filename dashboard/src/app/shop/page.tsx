@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { loadCatalog, loadCustomer, type Order } from "@/lib/shop";
 import ThemeToggle from "@/components/ThemeToggle";
+import ResetDemo from "./ResetDemo";
 import SupportChat from "./SupportChat";
 
 export const metadata = { title: "Hearth & Co. (demo store)" };
@@ -56,7 +57,9 @@ async function Shop({ searchParams }: { searchParams: Params }) {
       <div className="border-b border-line bg-brand/[0.07] px-4 py-2 text-center text-xs text-muted">
         Demo store. Products and customers are fictional; the support chat is answered by the real agentdesk
         platform, and a person approves every reply before it reaches you.{" "}
-        <Link href="/" className="font-medium text-brand hover:underline">Watch it in the control room →</Link>
+        <Link href="/trace" className="font-medium text-brand hover:underline">See every step behind the scenes →</Link>
+        {" · "}
+        <ResetDemo />
       </div>
 
       <header className="sticky top-0 z-20 border-b border-line bg-canvas/90 backdrop-blur">

@@ -46,6 +46,16 @@ ControlC code, data or credentials, ever.
 - **n8n workflows are generated**: edit `n8n/build.py`, run it, re-import. Never hand-edit the JSON.
 - Code, comments, UI and docs in English (international portfolio).
 
+## Demo mode
+
+The store's visitor may approve or reject the proposals of their own store tickets
+(`POST /shop/proposals/{id}/decision`, actor `demo-visitor`, through `approvals.decide`), only for
+tickets whose `external_id` starts with `shop-`, `n8n-` or `voice-` and only for the three `eval.*`
+demo customers. `DEMO_REVIEWER=false` turns it off. `reset_demo_store()` (migration 0007, security
+definer, executable only by `desk_api`) undoes visitor refunds on those customers' orders; the API
+role has no delete grant on refunds otherwise. The demo customers are also the eval fixtures:
+evals run against the local seed, never production, so visitors cannot skew them.
+
 ## Voice channel (ElevenAgents)
 
 `voice.py` + `voice_setup.py`. The ElevenLabs agent and its two webhook tools are generated:

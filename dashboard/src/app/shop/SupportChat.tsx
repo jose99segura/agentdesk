@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import type { ShopCustomer } from "@/lib/shop";
-import { sendToSupport, ticketStatus, type TicketView } from "./actions";
+import { decideAsReviewer, sendToSupport, ticketStatus, type TicketView } from "./actions";
 import VoiceCall from "./VoiceCall";
 
 // The store's support widget. A message becomes a ticket (through n8n in production), and
@@ -176,7 +176,7 @@ export default function SupportChat({ customer, orders, voice }: { customer: Sho
               ) : t.kind === "error" ? (
                 <p key={i} className="text-center text-xs text-bad">{t.text}</p>
               ) : (
-                <TicketTurn key={i} turn={t} />
+                <TicketTurn key={i} turn={t} email={customer.email} />
               ),
             )}
           </div>
@@ -267,7 +267,8 @@ function steps(v: TicketView | null, via: "n8n" | "api" | "voice") {
     },
     {
       label: v?.status === "needs_human" ? "Handed to a person on our team" :
-        v?.reply_status === "rejected" ? "The reviewer asked for a better reply" : "A person is reviewing the reply",
+        v?.reply_status === "rejected" ? "The reviewer asked for a better reply"
+          : v?.reviewable ? "Waiting for the reviewer: that's you, below" : "A person is reviewing the reply",
       done: !!v?.reply,
       active: !!v && !working && !v.reply,
       detail: v?.refund ? `Refund of ${money(v.refund.amount_cents)} on ${v.refund.order_id}: ${v.refund.status}` : undefined,
@@ -275,7 +276,7 @@ function steps(v: TicketView | null, via: "n8n" | "api" | "voice") {
   ] as { label: string; done: boolean; active?: boolean; detail?: string }[];
 }
 
-function TicketTurn({ turn }: { turn: Extract<Turn, { kind: "ticket" }> }) {
+function TicketTurn({ turn, email }: { turn: Extract<Turn, { kind: "ticket" }>; email: string }) {
   const v = turn.view;
   return (
     <>
@@ -298,7 +299,80 @@ function TicketTurn({ turn }: { turn: Extract<Turn, { kind: "ticket" }> }) {
           </a>
         </div>
       </div>
+      {v?.reviewable && v.proposals.length > 0 && !v.reply && <ReviewPanel view={v} email={email} />}
       {v?.reply && <Bubble side="them">{v.reply}</Bubble>}
     </>
+  );
+}
+
+// Demo mode. In a real store this is a person on the team, answering a Telegram card; here
+// the visitor plays that person so the whole loop can be seen without waiting for anyone.
+function ReviewPanel({ view, email }: { view: TicketView; email: string }) {
+  const [pending, start] = useTransition();
+  const [done, setDone] = useState<Record<string, "approved" | "rejected">>({});
+  const [error, setError] = useState<string | null>(null);
+  const open = view.proposals.filter((p) => p.status === "pending" && !done[p.id]);
+  if (!open.length && !Object.keys(done).length) return null;
+
+  const act = (ids: string[], approve: boolean) =>
+    start(async () => {
+      setError(null);
+      for (const id of ids) {
+        const r = await decideAsReviewer(id, email, approve);
+        if (!r.ok) {
+          setError(r.error);
+          return;
+        }
+        setDone((d) => ({ ...d, [id]: approve ? "approved" : "rejected" }));
+      }
+    });
+
+  return (
+    <div className="self-stretch rounded-xl border border-warn/40 bg-warn/[0.06] px-3 py-2.5 text-xs">
+      <div className="font-semibold text-ink">Demo: you are the store&apos;s reviewer</div>
+      <p className="mt-0.5 text-muted">
+        The agents can&apos;t send or refund on their own. In a real store a person on the team approves this from a
+        Telegram card. Here, you play that person.
+      </p>
+      <ul className="mt-2 flex flex-col gap-2">
+        {view.proposals.map((p) => {
+          const state = done[p.id] ?? (p.status === "pending" ? null : p.status);
+          return (
+            <li key={p.id} className="rounded-lg border border-line bg-panel px-2.5 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-ink">
+                  {p.kind === "refund"
+                    ? `Refund ${money(p.amount_cents ?? 0)} on ${p.order_id}`
+                    : "Send this reply"}
+                </span>
+                {state ? (
+                  <span className={state === "rejected" ? "text-bad" : "text-ok"}>{state === "rejected" ? "✕ rejected" : "✓ approved"}</span>
+                ) : (
+                  <span className="flex gap-1">
+                    <button disabled={pending} onClick={() => act([p.id], false)} className="rounded-md border border-line px-2 py-0.5 hover:bg-ink/5 disabled:opacity-40">
+                      Reject
+                    </button>
+                    <button disabled={pending} onClick={() => act([p.id], true)} className="rounded-md bg-ok px-2 py-0.5 font-medium text-white disabled:opacity-40">
+                      Approve
+                    </button>
+                  </span>
+                )}
+              </div>
+              {p.body && <p className="mt-1.5 line-clamp-4 whitespace-pre-wrap text-muted">{p.body}</p>}
+              {p.flags.length > 0 && (
+                <p className="mt-1 text-warn">Flagged for the reviewer: {p.flags.map((f) => f.replaceAll("_", " ")).join(", ")}</p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {open.length > 1 && (
+        <button disabled={pending} onClick={() => act(open.map((p) => p.id), true)} className="mt-2 w-full rounded-md bg-ok py-1.5 font-medium text-white disabled:opacity-40">
+          Approve all
+        </button>
+      )}
+      {pending && <p className="mt-1.5 text-faint">Executing through the approval path…</p>}
+      {error && <p className="mt-1.5 text-bad">{error}</p>}
+    </div>
   );
 }

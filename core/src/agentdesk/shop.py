@@ -7,6 +7,7 @@ from its server, never from the browser. Everything they return is the demo stor
 """
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from .config import settings
 from .db import api_pool
@@ -16,6 +17,9 @@ router = APIRouter(prefix="/shop")
 # Customers the storefront offers to "log in" as: the evaluation fixtures have orders in
 # every state, so every path of the agents can be tried from the shop.
 FEATURED = ["eval.bruno@example.com", "eval.alice@example.com", "eval.chloe@example.com"]
+# Tickets the store itself created (chat directly or through n8n, phone calls): the only
+# ones a visitor may review in demo mode.
+STORE_PREFIXES = ("shop-", "n8n-", "voice-")
 
 
 def _customer(conn, email: str) -> dict:
@@ -81,7 +85,7 @@ def ticket(ticket_id: str, email: str) -> dict:
     """A ticket as its sender sees it: progress, and the reply once a person approved it."""
     with api_pool().connection() as conn:
         t = conn.execute(
-            """select id, status::text, intent, created_at from tickets
+            """select id, external_id, status::text, intent, created_at from tickets
                where id = %s and customer_email = %s""",
             (ticket_id, email.lower()),
         ).fetchone()
@@ -97,7 +101,8 @@ def ticket(ticket_id: str, email: str) -> dict:
             (ticket_id,),
         ).fetchall()
         proposals = conn.execute(
-            "select kind, status::text, payload from proposals where ticket_id = %s order by created_at",
+            """select id::text, kind, status::text, payload, flags from proposals
+               where ticket_id = %s order by created_at""",
             (ticket_id,),
         ).fetchall()
         sent = conn.execute(
@@ -115,7 +120,57 @@ def ticket(ticket_id: str, email: str) -> dict:
         "refund": {"status": refund["status"], "amount_cents": refund["payload"].get("amount_cents"),
                    "order_id": refund["payload"].get("order_id")} if refund else None,
         "reply": sent["body"] if sent else None,
+        # What the reviewer sees, for demo mode: the store's visitor can play that person.
+        "proposals": [{"id": p["id"], "kind": p["kind"], "status": p["status"], "flags": p["flags"],
+                       "body": p["payload"].get("body"), "order_id": p["payload"].get("order_id"),
+                       "amount_cents": p["payload"].get("amount_cents")} for p in proposals],
+        "reviewable": settings().demo_reviewer and _is_store_ticket(t["external_id"], email),
     }
+
+
+def _is_store_ticket(external_id: str, email: str) -> bool:
+    return external_id.startswith(STORE_PREFIXES) and email.lower() in FEATURED
+
+
+class DemoDecision(BaseModel):
+    email: str
+    approve: bool
+
+
+@router.post("/proposals/{proposal_id}/decision")
+def demo_decision(proposal_id: str, d: DemoDecision) -> dict:
+    """Demo mode: the visitor decides as the store's reviewer, through the same approval
+    path as Telegram and the dashboard (re-validated, audited). Only on store tickets of
+    the demo customers, and only as the customer the store is signed in as."""
+    from .approvals import DecisionError, decide
+
+    if not settings().demo_reviewer:
+        raise HTTPException(status_code=403, detail="demo reviewing is off")
+    with api_pool().connection() as conn:
+        row = conn.execute(
+            """select t.external_id, t.customer_email from proposals p join tickets t on t.id = p.ticket_id
+               where p.id = %s""",
+            (proposal_id,),
+        ).fetchone()
+        own = row and row["customer_email"] == d.email.lower()
+        if not own or not _is_store_ticket(row["external_id"], d.email):
+            raise HTTPException(status_code=404, detail="no such proposal on this customer's store tickets")
+        try:
+            return decide(conn, proposal_id, d.approve, "demo-visitor")
+        except DecisionError as exc:
+            conn.execute(
+                """update proposals set status = 'failed', decided_by = 'demo-visitor', decided_at = now()
+                   where id = %s and status = 'pending'""",
+                (proposal_id,),
+            )
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post("/reset")
+def reset() -> dict:
+    """Put the demo customers' orders back as the seed left them (refunds undone)."""
+    with api_pool().connection() as conn:
+        return conn.execute("select reset_demo_store() as r").fetchone()["r"]
 
 
 def include(app, require_token) -> None:

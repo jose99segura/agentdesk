@@ -197,6 +197,15 @@ the transcript, the summary and a call_successful score to that trace and to the
 When the call ends, the ticket it filed shows up in the store's chat and is followed like any
 other until a person approves the reply.
 
+## Demo mode
+In the demo store the visitor also plays the store's reviewer: under the progress of each of their
+messages they see the proposals (the reply, and the refund when there is one) with Approve and
+Reject. The press goes through approvals.decide like Telegram and the dashboard, re-validated and
+audited with actor demo-visitor, and only works on the visitor's own store tickets of the three demo
+customers (POST /shop/proposals/{id}/decision). "Reset demo" calls reset_demo_store(), a database
+function that undoes the refunds visitors approved on those customers' orders; the API role cannot
+delete refunds any other way. DEMO_REVIEWER=false turns the reviewer panel off.
+
 ## Stack and code map
 - Core: Python 3.12, FastAPI, psycopg 3, Pydantic; models over plain HTTP (Mistral, Anthropic),
   offline stand-in for keyless runs. Dashboard: Next.js 16, React 19, Tailwind 4, Supabase
