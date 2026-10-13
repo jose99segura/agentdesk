@@ -108,7 +108,7 @@ class TelegramService:
         if self.interactive:
             params["reply_markup"] = buttons(str(p["id"]))
         else:
-            params["text"] += f"\n\nReview on the dashboard: {_e(self.dashboard_url)}"
+            params["text"] += f"\n\nReview on the dashboard: {_e(self.dashboard_url)}/approvals"
         try:
             msg = self.bot.call("sendMessage", **params)
         except TelegramError as exc:
@@ -131,7 +131,7 @@ class TelegramService:
             "select count(*) as n from proposals where status = 'pending' and notified_at is null"
         ).fetchone()["n"]
         text = (f"📥 <b>{n} more proposals</b> are waiting for approval. The hourly card budget "
-                f"is spent, so they are bundled here.\n{_e(self.dashboard_url)}")
+                f"is spent, so they are bundled here.\n{_e(self.dashboard_url)}/approvals")
         try:
             self.bot.call("sendMessage", chat_id=self.chat_id, text=text, parse_mode="HTML")
         except TelegramError as exc:
@@ -148,7 +148,7 @@ class TelegramService:
         dead = conn.execute("select count(*) as n from jobs where status = 'dead'").fetchone()["n"]
         if dead:
             self.alert(conn, "dead_letters",
-                       f"🔴 <b>{dead} jobs</b> are in the dead letter queue.\n{_e(self.dashboard_url)}")
+                       f"🔴 <b>{dead} jobs</b> are in the dead letter queue.\n{_e(self.dashboard_url)}/queue")
         open_circuits = conn.execute(
             "select provider from provider_health where state = 'open'"
         ).fetchall()

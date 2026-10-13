@@ -10,7 +10,7 @@ import { Dot } from "./ui";
 import { useLive, useLiveQuery } from "./live";
 
 const NAV = [
-  { href: "/", label: "Overview" },
+  { href: "/overview", label: "Overview" },
   { href: "/trace", label: "Trace" },
   { href: "/runs", label: "Runs" },
   { href: "/approvals", label: "Approvals", count: "pending_approvals" as const },
@@ -28,15 +28,15 @@ export default function Shell({ children }: { children: ReactNode }) {
     null,
   );
 
-  // The demo storefront is the customer's side: no control-room chrome around it.
-  if (pathname.startsWith("/shop")) return <>{children}</>;
+  // The start page and the demo storefront stand on their own: no control-room chrome.
+  if (pathname === "/" || pathname.startsWith("/shop")) return <>{children}</>;
 
-  const active = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const active = (href: string) => pathname.startsWith(href);
 
   return (
     <div className="flex min-h-screen">
       <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-line px-3 py-5 md:flex">
-        <Link href="/" className="px-2">
+        <Link href="/overview" className="px-2">
           <div className="flex items-center gap-2">
             <span className="grid h-6 w-6 place-items-center rounded-md bg-brand/15 text-xs font-bold text-brand">a</span>
             <span className="font-semibold tracking-tight">agentdesk</span>

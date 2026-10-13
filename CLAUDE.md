@@ -97,7 +97,7 @@ Project `agentdesk-jose99` (billing on the personal account), region `europe-wes
 | Service | URL | Access |
 |---|---|---|
 | API | https://agentdesk-api-pzm2fnni7a-ew.a.run.app | public; bearer token on every route but /health, /meta and the Telegram webhook (secret header) |
-| Dashboard | https://agentdesk.senaproject.online (also https://agentdesk-dashboard-pzm2fnni7a-ew.a.run.app) | public, read-only (`DASHBOARD_ACTIONS_ENABLED=false`: no login yet); the demo store is `/shop` |
+| Dashboard | https://agentdesk.senaproject.online (also https://agentdesk-dashboard-pzm2fnni7a-ew.a.run.app) | public, read-only (`DASHBOARD_ACTIONS_ENABLED=false`: no login yet); `/` is the start page, the control room is `/overview`, the demo store `/shop`, traces `/trace` |
 | Worker | https://agentdesk-worker-pzm2fnni7a-ew.a.run.app | private: only the invoker service account (Pub/Sub push, Scheduler) |
 
 - **Deploy:** `bash infra/deploy.sh agentdesk-jose99` builds both images on Cloud Build (tagged

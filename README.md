@@ -12,8 +12,9 @@ approval, tracing and a live control room.
 
 | | |
 |---|---|
+| **Start here** | [agentdesk.senaproject.online](https://agentdesk.senaproject.online): what it is in one sentence and how to see it work in three steps |
 | **Demo store** | [agentdesk.senaproject.online/shop](https://agentdesk.senaproject.online/shop): pick a customer, look at their orders, write to support or press **Call support** to talk to the voice agent |
-| **Control room** | [agentdesk.senaproject.online](https://agentdesk.senaproject.online): runs, approvals, queue, agents, evals and audit log, live (read-only in public) |
+| **Control room** | [agentdesk.senaproject.online/overview](https://agentdesk.senaproject.online/overview): runs, approvals, queue, agents, evals and audit log, live (read-only in public) |
 | **How it works** | [agentdesk.senaproject.online/info](https://agentdesk.senaproject.online/info): seven tabs of diagrams, prompts and worked paths, and a chat that answers questions about the system |
 
 A message in the store goes through n8n's intake webhook to the API, the agents look up the order
