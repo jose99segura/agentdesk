@@ -10,7 +10,8 @@ def build_providers(cfg: Settings) -> list[Provider]:
     """The configured chain, minus providers that have no key (or offline when disallowed)."""
     available: dict[str, Callable[[], Provider]] = {}
     if cfg.mistral_api_key:
-        available["mistral"] = lambda: MistralProvider(cfg.mistral_api_key, cfg.mistral_model)
+        available["mistral"] = lambda: MistralProvider(cfg.mistral_api_key, cfg.mistral_model,
+                                                       cfg.mistral_min_interval_s)
     if cfg.anthropic_api_key:
         available["anthropic"] = lambda: AnthropicProvider(cfg.anthropic_api_key, cfg.anthropic_model)
     if cfg.allow_offline_model:

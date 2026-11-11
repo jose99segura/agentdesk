@@ -14,6 +14,7 @@ def main() -> None:
     ev.add_argument("--case", default=None, help="run a single case by id")
     ev.add_argument("--gate", action="store_true", help="exit 1 when the gate is closed (for CI)")
     ev.add_argument("--trigger", choices=["manual", "ci"], default="manual")
+    ev.add_argument("--json", default=None, help="also write a summary of the run to this file")
     sim = sub.add_parser("simulate", help="send synthetic customer tickets")
     sim.add_argument("--per-minute", type=float, default=6.0)
     sim.add_argument("--count", type=int, default=None)
@@ -43,6 +44,16 @@ def main() -> None:
 
         logging.getLogger("httpx").setLevel(logging.WARNING)
         report = run_suite(trigger=args.trigger, only=args.case)
+        if args.json:
+            import datetime
+            import json
+            from pathlib import Path
+
+            from .evals.history import summarize
+            from .evals.runner import _git_sha
+
+            run = summarize(report, date=datetime.date.today().isoformat(), sha=_git_sha())
+            Path(args.json).write_text(json.dumps(run, ensure_ascii=False), encoding="utf-8")
         print_report(report)
         if args.gate and not report["gate_passed"]:
             raise SystemExit(1)

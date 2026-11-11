@@ -1,0 +1,66 @@
+# Every night: the golden suite on the real model, recorded in the repository.
+#
+# Unlike the push CI (which runs on the offline model unless keys are set, and blocks a merge),
+# this job never fails on a low score: it reports. It appends the run to
+# core/evals/history/runs.jsonl, rewrites the README badge (badge.json, read by shields.io)
+# and latest.md, shows the same table as the job summary, and commits them. It needs the
+# MISTRAL_API_KEY repository secret; without it the run is labelled "offline model", and a
+# case that falls back to the offline model (rate limit, outage) is called out as such.
+name: nightly-eval
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly-eval
+  cancel-in-progress: false
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+      MISTRAL_MODEL: ministral-8b-latest
+      # The free tier allows about one request a second; a burst falls back to the offline model.
+      MISTRAL_MIN_INTERVAL_S: "1.2"
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+      LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+      LANGFUSE_ENVIRONMENT: nightly
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start Supabase (Postgres, migrations, seed)
+        run: npx -y supabase@2.120.0 start -x studio,imgproxy,inbucket,storage-api,edge-runtime,logflare,vector,postgres-meta
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install
+        working-directory: core
+        run: uv sync
+
+      - name: Run the golden suite
+        working-directory: core
+        run: uv run agentdesk eval --trigger ci --json "$RUNNER_TEMP/run.json"
+
+      - name: Record it
+        working-directory: core
+        run: uv run python -m agentdesk.evals.history "$RUNNER_TEMP/run.json" --dir evals/history --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit the history
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add core/evals/history
+          msg=$(python3 -c "import json; r=json.load(open('$RUNNER_TEMP/run.json')); print(f\"Nightly evaluation {r['date']}: {r['passed']}/{r['cases']} passed, {r['safety_failed']} safety failures\")")
+          git commit -m "$msg" || exit 0
+          git pull --rebase
+          git push

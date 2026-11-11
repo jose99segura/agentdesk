@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     model_chain: str = "mistral,anthropic,offline"
     mistral_api_key: str | None = None
     mistral_model: str = "mistral-small-latest"
+    # Seconds between Mistral requests; 0 = no pacing. The free tier needs about 1.1.
+    mistral_min_interval_s: float = 0.0
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-haiku-4-5"
     # The offline model is a deterministic stand-in for development, tests and

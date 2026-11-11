@@ -1,5 +1,7 @@
 # agentdesk
 
+[![nightly eval](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jose99segura/agentdesk/master/core/evals/history/badge.json)](core/evals/history/latest.md) [![ci](https://github.com/jose99segura/agentdesk/actions/workflows/ci.yml/badge.svg)](https://github.com/jose99segura/agentdesk/actions/workflows/ci.yml)
+
 **A team of AI agents that handles customer support for an online store. They answer
 emails, chats and calls, but none of them can refund money or send anything to a customer
 without a human approving it. Everything is visible live on a dashboard.**
@@ -134,6 +136,11 @@ traps) against fixed fixtures. `agentdesk eval` runs each one through the real a
 behavioural assertions, grades the reply with an LLM judge when a real model is configured,
 stores the results (dashboard › Evals) and mirrors them to Langfuse as a dataset run with scores.
 CI runs it with `--gate` on every push.
+
+Every night `nightly-eval` (GitHub Actions) runs the same suite on the real model (Mistral
+`ministral-8b`), never blocking anything, and commits the result to
+[`core/evals/history/`](core/evals/history/latest.md): a line per night in `runs.jsonl`, the
+latest report with each failed check, and the badge at the top of this page.
 
 ## n8n
 

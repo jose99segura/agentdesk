@@ -1,6 +1,7 @@
 """Model providers over plain HTTP. Each one raises ProviderError, never anything else."""
 
 import json
+import threading
 import time
 from typing import Protocol
 
@@ -29,11 +30,35 @@ def _http_error(provider: str, exc: Exception) -> ProviderError:
     return ProviderError(provider, f"{type(exc).__name__}: {exc}", transient=True)
 
 
+class _Pacer:
+    """Keeps requests at least `interval` seconds apart, across threads.
+
+    Mistral's free tier allows about one request per second; a burst (an evaluation runs
+    several model calls per case back to back) gets 429s, the breaker opens and the agents
+    fall back to the offline model. Off by default; the nightly evaluation turns it on.
+    """
+
+    def __init__(self, interval: float):
+        self.interval = interval
+        self._lock = threading.Lock()
+        self._next = 0.0
+
+    def wait(self) -> None:
+        if self.interval <= 0:
+            return
+        with self._lock:
+            now = time.monotonic()
+            if self._next > now:
+                time.sleep(self._next - now)
+            self._next = max(now, self._next) + self.interval
+
+
 class MistralProvider:
     name = "mistral"
 
-    def __init__(self, api_key: str, model: str):
+    def __init__(self, api_key: str, model: str, min_interval_s: float = 0.0):
         self.model = model
+        self._pacer = _Pacer(min_interval_s)
         self._client = httpx.Client(
             base_url="https://api.mistral.ai/v1",
             headers={"Authorization": f"Bearer {api_key}"},
@@ -57,6 +82,7 @@ class MistralProvider:
             ]
             # Forcing works by offering only the forced tool and requiring a call.
             body["tool_choice"] = "any" if force_tool else "auto"
+        self._pacer.wait()
         started = time.monotonic()
         try:
             res = self._client.post("/chat/completions", json=body)

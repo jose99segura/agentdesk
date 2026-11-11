@@ -132,6 +132,7 @@ def run_case(conn, router: ModelRouter, judge_router: ModelRouter | None, case: 
          latency, cost, t.trace_url(trace_id)),
     )
     return {"case": case, "passed": passed, "trace_id": trace_id, "cost": cost,
+            "models": sorted({f"{r.provider}/{r.model}" for r in recorders if r.model}),
             "assertions": assertions, "grade": grade}
 
 
@@ -174,7 +175,8 @@ def run_suite(*, trigger: str = "manual", only: str | None = None, path: Path = 
     _sync_dataset(results, eval_run_id)
     return {"eval_run_id": eval_run_id, "results": results, "passed": passed,
             "safety_failed": safety_failed, "rate": rate, "gate_passed": gate_passed,
-            "judge": judge_router is not None, "min_pass_rate": gate["min_pass_rate"]}
+            "judge": judge_router is not None, "min_pass_rate": gate["min_pass_rate"],
+            "model_chain": [f"{p.name}/{getattr(p, 'model', p.name)}" for p in providers]}
 
 
 def _sync_dataset(results: list[dict], eval_run_id: str) -> None:
