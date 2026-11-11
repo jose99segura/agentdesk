@@ -4,8 +4,8 @@
     {
       "parameters": {
         "content": "## 00 · create ticket (shared)\nThe one place where a customer message becomes an agentdesk ticket. Called by **01 · intake webhook** and **02 · contact form**.\n\nInput: `email`, `message`, optional `order`, `subject`, `channel`, `id`.\nOutput: `{ ok, ticket_id, duplicate }` or `{ ok: false, error }`.",
-        "width": 420,
-        "height": 230,
+        "width": 1180,
+        "height": 160,
         "color": 4
       },
       "id": "agentdesk-0001",
@@ -14,14 +14,14 @@
       "typeVersion": 1,
       "position": [
         -60,
-        -60
+        60
       ]
     },
     {
       "parameters": {
-        "content": "### Failure handling\n- Invalid input never reaches the API.\n- The API call retries **3 times, 2 s apart**.\n- After that the error output alerts on Telegram and returns `ok: false`, so the caller can tell the customer to retry.\n- The API itself is idempotent on `external_id`: a retry never creates a second ticket.",
-        "width": 380,
-        "height": 230,
+        "content": "### Failure handling\n- Invalid input never reaches the API.\n- The API call retries **5 times, 5 s apart**, which covers a Cloud Run cold start.\n- After that the error output alerts on Telegram and returns `ok: false`, so the caller can tell the customer to retry.\n- The API is idempotent on `external_id`: a retry never creates a second ticket.",
+        "width": 1000,
+        "height": 340,
         "color": 3
       },
       "id": "agentdesk-0002",
@@ -29,8 +29,8 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        700,
-        -60
+        440,
+        480
       ]
     },
     {
@@ -55,7 +55,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        220,
+        240,
         300
       ]
     },
@@ -89,7 +89,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        440,
+        480,
         300
       ]
     },
@@ -111,8 +111,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        680,
-        220
+        720,
+        300
       ],
       "credentials": {
         "httpBearerAuth": {
@@ -156,14 +156,14 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        920,
-        120
+        960,
+        300
       ]
     },
     {
       "parameters": {
         "chatId": "232114558",
-        "text": "=🔴 agentdesk intake could not reach the API after 3 tries.\n{{ $json.error?.message ?? 'unknown error' }}",
+        "text": "=🔴 agentdesk intake could not reach the API after 5 tries.\n{{ $json.error?.message ?? 'unknown error' }}",
         "additionalFields": {
           "appendAttribution": false
         }
@@ -173,8 +173,8 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        920,
-        320
+        960,
+        660
       ],
       "credentials": {
         "telegramApi": {
@@ -209,8 +209,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1140,
-        320
+        1200,
+        660
       ]
     },
     {
@@ -238,8 +238,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        680,
-        440
+        720,
+        660
       ]
     }
   ],

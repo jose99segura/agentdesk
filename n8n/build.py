@@ -92,16 +92,17 @@ def shared_create_ticket():
              "agentdesk ticket. Called by **01 · intake webhook** and **02 · contact form**.\n\n"
              "Input: `email`, `message`, optional `order`, `subject`, `channel`, `id`.\n"
              "Output: `{ ok, ticket_id, duplicate }` or `{ ok: false, error }`.",
-             [-60, -60], 420, 230, 4),
+             [-60, 60], 1180, 160, 4),
+        # The failure note frames the bottom row, so every way this can fail sits inside it.
         note("### Failure handling\n- Invalid input never reaches the API.\n- The API call retries "
-             "**3 times, 2 s apart**.\n- After that the error output alerts on Telegram and returns "
-             "`ok: false`, so the caller can tell the customer to retry.\n- The API itself is "
-             "idempotent on `external_id`: a retry never creates a second ticket.",
-             [700, -60], 380, 230, 3),
+             "**5 times, 5 s apart**, which covers a Cloud Run cold start.\n- After that the error "
+             "output alerts on Telegram and returns `ok: false`, so the caller can tell the customer "
+             "to retry.\n- The API is idempotent on `external_id`: a retry never creates a second ticket.",
+             [440, 480], 1000, 340, 3),
         node("When called", "n8n-nodes-base.executeWorkflowTrigger", 1.1, [0, 300],
              {"inputSource": "passthrough"}),
-        node("Normalize and validate", "n8n-nodes-base.code", 2, [220, 300], {"jsCode": NORMALIZE}),
-        node("Valid?", "n8n-nodes-base.if", 2.2, [440, 300], {
+        node("Normalize and validate", "n8n-nodes-base.code", 2, [240, 300], {"jsCode": NORMALIZE}),
+        node("Valid?", "n8n-nodes-base.if", 2.2, [480, 300], {
             "conditions": {"options": {"caseSensitive": True, "leftValue": "", "typeValidation": "strict",
                                        "version": 2},
                            "conditions": [{"id": "valid", "leftValue": "={{ $json.valid }}",
@@ -109,26 +110,26 @@ def shared_create_ticket():
                                            "operator": {"type": "boolean", "operation": "true",
                                                         "singleValue": True}}],
                            "combinator": "and"}, "options": {}}),
-        http_create_ticket([680, 220]),
-        node("Created", "n8n-nodes-base.set", 3.4, [920, 120], {
+        http_create_ticket([720, 300]),
+        node("Created", "n8n-nodes-base.set", 3.4, [960, 300], {
             "assignments": {"assignments": [
                 {"id": "ok", "name": "ok", "value": True, "type": "boolean"},
                 {"id": "tid", "name": "ticket_id", "value": "={{ $json.ticket_id }}", "type": "string"},
                 {"id": "dup", "name": "duplicate", "value": "={{ $json.duplicate }}", "type": "boolean"},
             ]}, "options": {}}),
-        node("Alert on Telegram", "n8n-nodes-base.telegram", 1.2, [920, 320], {
+        node("Alert on Telegram", "n8n-nodes-base.telegram", 1.2, [960, 660], {
             "chatId": CHAT_ID,
-            "text": "=🔴 agentdesk intake could not reach the API after 3 tries.\n"
+            "text": "=🔴 agentdesk intake could not reach the API after 5 tries.\n"
                     "{{ $json.error?.message ?? 'unknown error' }}",
             "additionalFields": {"appendAttribution": False}}, credentials=TG_CRED,
              onError="continueRegularOutput"),
-        node("Unavailable", "n8n-nodes-base.set", 3.4, [1140, 320], {
+        node("Unavailable", "n8n-nodes-base.set", 3.4, [1200, 660], {
             "assignments": {"assignments": [
                 {"id": "ok", "name": "ok", "value": False, "type": "boolean"},
                 {"id": "err", "name": "error", "value": "The service is temporarily unavailable. Please try again.",
                  "type": "string"},
             ]}, "options": {}}),
-        node("Invalid", "n8n-nodes-base.set", 3.4, [680, 440], {
+        node("Invalid", "n8n-nodes-base.set", 3.4, [720, 660], {
             "assignments": {"assignments": [
                 {"id": "ok", "name": "ok", "value": False, "type": "boolean"},
                 {"id": "err", "name": "error", "value": "={{ $json.error }}", "type": "string"},
