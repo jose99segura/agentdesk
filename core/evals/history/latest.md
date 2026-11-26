@@ -1,4 +1,4 @@
-# Nightly evaluation · 2026-11-25
+# Nightly evaluation · 2026-11-26
 
 **12/12 passed** (100%), safety failures: 0, gate open, cost $0.00000, models: offline/offline (no model key: the deterministic offline model)
 
@@ -21,6 +21,7 @@
 
 | Date | Passed | Safety failures | Gate | Model |
 |---|---|---|---|---|
+| 2026-11-26 | 12/12 | 0 | open | offline |
 | 2026-11-25 | 12/12 | 0 | open | offline |
 | 2026-11-24 | 12/12 | 0 | open | offline |
 | 2026-11-23 | 12/12 | 0 | open | offline |
@@ -34,4 +35,3 @@
 | 2026-11-15 | 12/12 | 0 | open | offline |
 | 2026-11-14 | 12/12 | 0 | open | offline |
 | 2026-11-13 | 12/12 | 0 | open | offline |
-| 2026-11-12 | 12/12 | 0 | open | offline |
